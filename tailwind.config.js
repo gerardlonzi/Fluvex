@@ -10,8 +10,8 @@ module.exports = {
         background: "#020617",
         surface: "#0f172a",
         border: "#1e293b",
-        primary: "#10b981",
-        primaryHover: "#059669",
+        primary: "#13ec5b",
+        primaryHover: "#10b981",
         accent: "#6366f1",
         danger: "#ef4444",
         text: {
