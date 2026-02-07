@@ -4,10 +4,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, Truck, Map as MapIcon, 
-  BarChart3, Leaf, Settings, Users, LogOut 
-} from 'lucide-react';
+  BarChart3, Leaf, Settings, Users, LogOut ,Bell} from 'lucide-react';
 import { clsx } from 'clsx'; // Utile pour les classes conditionnelles
-
+import { useState } from 'react';
 const menuItems = [
   { name: 'Tableau de bord', icon: LayoutDashboard, href: '/dashboard' },
   { name: 'Gestion de Flotte', icon: Truck, href: '/dashboard/fleet' },
@@ -20,15 +19,23 @@ const menuItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [notifCount, setNotifCount] = useState(2);
 
   return (
     <aside className="w-64 bg-surface border-r border-border h-screen flex flex-col fixed left-0 top-0">
       {/* Logo Area */}
+      <div className='flex justify-between'>
       <div className="p-6 flex items-center gap-3">
         <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
           <Leaf className="text-white w-5 h-5" />
         </div>
         <span className="text-xl font-bold text-white tracking-tight">FLUVEX</span>
+      </div>
+      <button className="relative p-2 text-slate-400 hover:text-white transition-colors" onClick={() => setNotifCount(0)}>
+            <Bell size={20} />
+            {notifCount > 0 && <span className="absolute top-6 right-1 size-2 bg-primary rounded-full" />}
+          </button>
+
       </div>
 
       {/* Navigation */}
