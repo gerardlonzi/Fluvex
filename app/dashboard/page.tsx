@@ -1,5 +1,5 @@
 // src/app/dashboard/page.tsx
-import { ArrowUpRight, ArrowDownRight, Activity, Battery, Zap } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Activity, Battery, Zap , Calendar} from 'lucide-react';
 
 // Composant "Atome" pour les cartes de stats
 function StatCard({ title, value, change, trend, icon: Icon }: any) {
@@ -29,9 +29,15 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold text-white">Tableau de bord</h1>
           <p className="text-text-muted mt-1">Bienvenue, voici l'état de votre flotte en temps réel.</p>
         </div>
+        <div className='flex space-x-4'>
+        <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-surface hover:bg-slate-800 transition-colors text-sm font-medium text-white">
+            <Calendar className="w-4 h-4" />
+            Ce Mois
+          </button>
         <button className="bg-primary hover:bg-primaryHover text-white px-5 py-2.5 rounded-xl font-semibold transition-all shadow-lg shadow-emerald-900/20">
           + Nouvelle Livraison
         </button>
+        </div>
       </div>
 
       {/* Stats Grid */}
