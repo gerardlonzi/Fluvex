@@ -1,10 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { 
   MoreVertical, RefreshCw, Clock, Fuel, Truck, 
   MapPin, AlertTriangle, CheckCircle, Loader2, Download 
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { downloadExport } from '@/utils/downloadExport';
 
 // Type pour nos données (Mock)
 interface Route {
@@ -24,6 +26,12 @@ const routes: Route[] = [
 ];
 
 export function RoutePanel() {
+  const [exporting, setExporting] = useState(false);
+  const handleExport = async () => {
+    setExporting(true);
+    await downloadExport('/api/export/routes?format=csv', 'routes_actives.csv');
+    setExporting(false);
+  };
   return (
     <aside className="w-96 bg-surface border-l border-border flex flex-col h-full shadow-2xl z-20">
       {/* Header Section */}
@@ -137,9 +145,9 @@ export function RoutePanel() {
 
       {/* Footer Action */}
       <div className="p-4 border-t border-border bg-border">
-        <button className="w-full flex items-center justify-center gap-2 border border-border bg-surface hover:bg-slate-800 text-white text-sm font-bold py-2.5 px-4 rounded-lg transition-colors">
-          <Download className="w-4 h-4" />
-          Exporter les données
+        <button type="button" onClick={handleExport} disabled={exporting} className="w-full flex items-center justify-center gap-2 border border-border bg-surface hover:bg-slate-800 text-white text-sm font-bold py-2.5 px-4 rounded-lg transition-colors disabled:opacity-70">
+          {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          {exporting ? 'Export...' : 'Exporter les données'}
         </button>
       </div>
     </aside>
