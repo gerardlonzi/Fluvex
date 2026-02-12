@@ -4,13 +4,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, Truck, Map as MapIcon, 
-  BarChart3, Leaf, Settings, Users, LogOut ,Bell} from 'lucide-react';
+  BarChart3, Leaf, Settings, Users, LogOut ,Bell, TruckIcon} from 'lucide-react';
 import { clsx } from 'clsx'; // Utile pour les classes conditionnelles
 import { useState } from 'react';
 const menuItems = [
   { name: 'Tableau de bord', icon: LayoutDashboard, href: '/dashboard' },
   { name: 'Gestion de Flotte', icon: Truck, href: '/dashboard/fleet' },
   { name: 'Carte en temps réel', icon: MapIcon, href: '/dashboard/map' },
+  { name: 'Livraisons', icon: TruckIcon, href: '/dashboard/deliveries' },
   { name: 'Analytique', icon: BarChart3, href: '/dashboard/analytics' },
   { name: 'Performance', icon: Users, href: '/dashboard/drivers' },
   { name: 'Impact Écologique', icon: Leaf, href: '/dashboard/sustainability' },
@@ -29,12 +30,9 @@ export function Sidebar() {
         <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
           <Leaf className="text-white w-5 h-5" />
         </div>
-        <span className="text-xl font-bold text-white tracking-tight">FLUVEX</span>
+        <span className="text-xl font-bold text-text-main tracking-tight">FLUVEX</span>
       </div>
-      <button className="relative p-2 text-slate-400 hover:text-white transition-colors" onClick={() => setNotifCount(0)}>
-            <Bell size={20} />
-            {notifCount > 0 && <span className="absolute top-6 right-1 size-2 bg-primary rounded-full" />}
-          </button>
+      
 
       </div>
 
@@ -50,7 +48,7 @@ export function Sidebar() {
                 "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-sm font-medium",
                 isActive 
                   ? "bg-primary/10 text-primary" 
-                  : "text-text-muted hover:bg-slate-800 hover:text-white"
+                  : "text-text-muted hover:bg-border hover:text-text-main"
               )}
             >
               <item.icon className="w-5 h-5" />
