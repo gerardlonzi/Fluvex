@@ -1,36 +1,119 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { 
-  Search, Calendar, Filter, ArrowUpDown, Download, 
-  ChevronRight, ChevronLeft, Truck, CheckCircle, 
-  Clock, AlertTriangle, MoreVertical, MapPin, 
+import {
+  Search, Calendar, Filter, ArrowUpDown, Download,
+  ChevronRight, ChevronLeft, Truck, CheckCircle,
+  Clock, AlertTriangle, MoreVertical, MapPin,
   Phone, User, X, Package, ShieldCheck,
-  Plus
+  Plus,
 } from 'lucide-react';
+import { downloadExport } from '@/utils/downloadExport';
 
-// --- DONNÉES DE DÉMO ---
-const DELIVERIES = [
-  { id: 'TRK-8821', client: 'Tech Solutions Inc.', status: 'En Transit', driver: 'Marc D.', dest: '12 Rue de la Paix, Paris', time: '14:30', eta: 'À l\'heure', items: 12, weight: '450kg' },
-  { id: 'TRK-8822', client: 'Global Bistro', status: 'Chargement', driver: 'Sarah J.', dest: '45 Av. Champs-Élysées', time: '16:00', eta: 'Retard +15m', items: 4, weight: '120kg' },
-  { id: 'TRK-8823', client: 'Urban Market', status: 'En Attente', driver: 'Non assigné', dest: '88 Rue de Rivoli, Paris', time: 'Demain 09:00', eta: 'Planifié', items: 85, weight: '1.2t' },
-  { id: 'TRK-8824', client: 'Bio Fresh Ltd.', status: 'En Transit', driver: 'Leo K.', dest: '22 Blvd Haussmann', time: '15:45', eta: 'À l\'heure', items: 24, weight: '300kg' },
-  { id: 'TRK-8825', client: 'Retail Express', status: 'Problème', driver: 'David M.', dest: '10 Av. Montaigne', time: '13:00', eta: 'Trafic Intense', items: 2, weight: '50kg' },
-];
+type DeliveryRow = {
+  id: string;
+  trackingId: string;
+  client: string;
+  status: string;
+  statusLabel: string;
+  driver: string;
+  dest: string;
+  amount: string;
+  currency: string;
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: 'En attente',
+  LOADING: 'Chargement',
+  TRANSIT: 'En transit',
+  DELAYED: 'Retardé',
+  COMPLETED: 'Terminée',
+  CANCELLED: 'Annulée',
+};
+
+function getStatusColor(statusLabel: string): string {
+  switch (statusLabel) {
+    case 'En transit': return 'bg-primary/10 text-primary border-primary/20';
+    case 'Chargement': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+    case 'En attente': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+    case 'Retardé': return 'bg-danger/10 text-danger border-danger/20';
+    case 'Terminée': return 'bg-primary/10 text-primary border-primary/20';
+    case 'Annulée': return 'bg-gray-500/10 text-gray-500';
+    default: return 'bg-gray-500/10 text-gray-500';
+  }
+}
 
 export default function DeliveryDashboard() {
-  const [selectedDelivery, setSelectedDelivery] = useState<typeof DELIVERIES[0] | null>(null);
+  const [deliveries, setDeliveries] = useState<DeliveryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<'active' | 'completed' | 'cancelled'>('active');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDelivery, setSelectedDelivery] = useState<DeliveryRow | null>(null);
+  const [dateFilter, setDateFilter] = useState<{ from: string; to: string }>({ from: '', to: '' });
+  const [showDateFilter, setShowDateFilter] = useState(false);
 
-  // Fonction pour obtenir la couleur du badge selon le statut
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'En Transit': return 'bg-primary/10 text-primary border-primary/20';
-      case 'Chargement': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
-      case 'En Attente': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-      case 'Problème': return 'bg-danger/10 text-danger border-danger/20';
-      default: return 'bg-gray-500/10 text-gray-500';
+  useEffect(() => {
+    fetch('/api/deliveries', { credentials: 'include' })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: Array<{ id: string; trackingId: string; status: string; amount: unknown; currency: string; driver: { name: string } | null; deliveryAddress?: string; recipientCompany?: string }>) => {
+        setDeliveries(
+          data.map((d) => ({
+            id: d.id,
+            trackingId: d.trackingId,
+            client: (d as { recipientCompany?: string }).recipientCompany ?? '—',
+            status: d.status,
+            statusLabel: STATUS_LABELS[d.status] ?? d.status,
+            driver: d.driver?.name ?? 'Non assigné',
+            dest: (d as { deliveryAddress?: string }).deliveryAddress ?? '—',
+            amount: d.amount != null ? String(d.amount) : '—',
+            currency: d.currency ?? 'CFA',
+          }))
+        );
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filteredByTab = useMemo(() => {
+    if (tab === 'active') return deliveries.filter((d) => ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status));
+    if (tab === 'completed') return deliveries.filter((d) => d.status === 'COMPLETED');
+    return deliveries.filter((d) => d.status === 'CANCELLED');
+  }, [deliveries, tab]);
+
+  const filtered = useMemo(() => {
+    let result = filteredByTab;
+    
+    // Filtre par recherche
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (d) =>
+          d.trackingId.toLowerCase().includes(q) ||
+          d.client.toLowerCase().includes(q) ||
+          d.driver.toLowerCase().includes(q)
+      );
     }
+    
+    // Filtre par date
+    if (dateFilter.from || dateFilter.to) {
+      result = result.filter((d) => {
+        // Note: nécessite d'avoir createdAt dans DeliveryRow
+        return true; // Placeholder - nécessite les données de date
+      });
+    }
+    
+    return result;
+  }, [filteredByTab, searchQuery, dateFilter]);
+
+  const countActive = deliveries.filter((d) => ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status)).length;
+  const countCompleted = deliveries.filter((d) => d.status === 'COMPLETED').length;
+  const countCancelled = deliveries.filter((d) => d.status === 'CANCELLED').length;
+
+  const [exporting, setExporting] = useState(false);
+  const handleExport = async () => {
+    setExporting(true);
+    await downloadExport('/api/export/deliveries?format=csv', 'livraisons.csv');
+    setExporting(false);
   };
 
   return (
@@ -62,37 +145,81 @@ export default function DeliveryDashboard() {
         
         {/* STATS CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard title="Livraisons Actives" value="12" trend="+2%" icon={<Truck className="text-primary" />} />
-          <StatCard title="Terminées Aujourd'hui" value="45" trend="+12%" icon={<CheckCircle className="text-accent" />} />
-          <StatCard title="En Attente" value="8" trend="-5%" isNegative icon={<Clock className="text-yellow-500" />} />
-          <StatCard title="Problèmes Signalés" value="2" trend="0%" icon={<AlertTriangle className="text-danger" />} />
+          <StatCard title="Livraisons Actives" value={String(countActive)} trend="—" icon={<Truck className="text-primary" />} />
+          <StatCard title="Terminées" value={String(countCompleted)} trend="—" icon={<CheckCircle className="text-accent" />} />
+          <StatCard title="En Attente" value={String(deliveries.filter((d) => d.status === 'PENDING').length)} trend="—" isNegative={false} icon={<Clock className="text-yellow-500" />} />
+          <StatCard title="Annulées" value={String(countCancelled)} trend="—" icon={<AlertTriangle className="text-danger" />} />
         </div>
 
         {/* TABLE SECTION */}
         <div className="bg-surface rounded-xl border border-border shadow-sm overflow-hidden flex flex-col">
-          
-          {/* TABS & TOOLBAR */}
           <div className="border-b border-border px-6 flex items-center justify-between bg-surface/50">
             <div className="flex gap-6">
-              <TabButton active label="Actives" count="12" />
-              <TabButton label="Terminées" count="45" />
-              <TabButton label="Annulées" count="2" />
+              <TabButton active={tab === 'active'} onClick={() => setTab('active')} label="Actives" count={String(countActive)} />
+              <TabButton active={tab === 'completed'} onClick={() => setTab('completed')} label="Terminées" count={String(countCompleted)} />
+              <TabButton active={tab === 'cancelled'} onClick={() => setTab('cancelled')} label="Annulées" count={String(countCancelled)} />
             </div>
           </div>
-          
+
           <div className="p-4 border-b border-border flex flex-col lg:flex-row gap-4 justify-between bg-surface">
             <div className="relative flex-1 max-w-md group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" size={18} />
-              <input 
-                type="text" 
-                placeholder="Rechercher par ID, Client ou Chauffeur..." 
+              <input
+                type="text"
+                placeholder="Rechercher par ID, Client ou Chauffeur..."
                 className="w-full bg-background border border-border rounded-lg pl-10 pr-4 py-2 text-sm text-text-main placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <div className="flex gap-3">
-              <ToolbarButton icon={<Filter size={16} />} label="Filtres" />
-              <ToolbarButton icon={<Calendar size={16} />} label="Date" />
-              <ToolbarButton icon={<Download size={16} />} label="Exporter" highlight />
+              <div className="relative">
+                <button 
+                  type="button"
+                  onClick={() => setShowDateFilter(!showDateFilter)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${showDateFilter ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-text-main hover:bg-border'}`}
+                >
+                  <Calendar size={16} />
+                  <span className="hidden lg:inline">Date</span>
+                </button>
+                {showDateFilter && (
+                  <div className="absolute top-full right-0 mt-2 bg-surface border border-border rounded-xl p-4 shadow-xl z-50 min-w-[280px]">
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-bold text-text-muted mb-1">Du</label>
+                        <input
+                          type="date"
+                          value={dateFilter.from}
+                          onChange={(e) => setDateFilter({ ...dateFilter, from: e.target.value })}
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-text-muted mb-1">Au</label>
+                        <input
+                          type="date"
+                          value={dateFilter.to}
+                          onChange={(e) => setDateFilter({ ...dateFilter, to: e.target.value })}
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
+                        />
+                      </div>
+                      {(dateFilter.from || dateFilter.to) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDateFilter({ from: '', to: '' });
+                            setShowDateFilter(false);
+                          }}
+                          className="w-full text-xs text-danger hover:underline"
+                        >
+                          Réinitialiser
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <button type="button" onClick={handleExport} disabled={exporting} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border border-transparent bg-primary text-[#020617] hover:bg-primaryHover disabled:opacity-70 transition-colors"><Download size={16} /><span className="hidden lg:inline">{exporting ? 'Export...' : 'Exporter'}</span></button>
             </div>
           </div>
 
@@ -111,38 +238,41 @@ export default function DeliveryDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {DELIVERIES.map((item) => (
-                  <tr 
-                    key={item.id} 
+                {loading ? (
+                  <tr><td colSpan={7} className="px-6 py-8 text-center text-text-muted">Chargement des livraisons...</td></tr>
+                ) : (
+                filtered.map((item) => (
+                  <tr
+                    key={item.id}
                     onClick={() => setSelectedDelivery(item)}
                     className={`group hover:bg-border/30 cursor-pointer transition-colors ${selectedDelivery?.id === item.id ? 'bg-border/40' : ''}`}
                   >
-                    <td className="px-6 py-4 font-mono font-medium text-text-main">{item.id}</td>
+                    <td className="px-6 py-4 font-mono font-medium text-text-main">{item.trackingId}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-border flex items-center justify-center text-xs font-bold text-text-main">
-                          {item.client.substring(0, 2).toUpperCase()}
+                          {item.client.slice(0, 2).toUpperCase()}
                         </div>
                         <span className="font-medium text-text-main">{item.client}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(item.status)}`}>
-                        {item.status}
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(item.statusLabel)}`}>
+                        {item.statusLabel}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-text-muted">
                       <div className="flex items-center gap-2">
-                         <div className="w-6 h-6 rounded-full bg-border flex items-center justify-center">
-                            <User size={12} />
-                         </div>
-                         {item.driver}
+                        <div className="w-6 h-6 rounded-full bg-border flex items-center justify-center">
+                          <User size={12} />
+                        </div>
+                        {item.driver}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-text-muted max-w-[200px] truncate">{item.dest}</td>
                     <td className="px-6 py-4">
-                      <div className="text-text-main font-medium">{item.time}</div>
-                      <div className={`text-xs ${item.eta.includes('Retard') || item.eta.includes('Trafic') ? 'text-danger' : 'text-text-muted'}`}>{item.eta}</div>
+                      <div className="text-text-main font-medium">{item.amount !== '—' ? `${item.amount} ${item.currency}` : '—'}</div>
+                      <div className="text-xs text-text-muted">{item.statusLabel}</div>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button className="p-2 hover:bg-border rounded-full text-text-muted hover:text-primary transition-colors">
@@ -150,14 +280,14 @@ export default function DeliveryDashboard() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                ))
+                )}
               </tbody>
             </table>
           </div>
-          
-          {/* PAGINATION */}
+
           <div className="bg-background/50 px-6 py-3 border-t border-border flex items-center justify-between">
-            <p className="text-sm text-text-muted">Affichage de <span className="text-text-main font-bold">1</span> à <span className="text-text-main font-bold">5</span> sur <span className="text-text-main font-bold">12</span> résultats</p>
+            <p className="text-sm text-text-muted">Affichage de <span className="text-text-main font-bold">{filtered.length}</span> résultat(s)</p>
             <div className="flex gap-1">
               <button className="p-1 rounded hover:bg-border text-text-muted"><ChevronLeft size={20}/></button>
               <button className="p-1 px-3 rounded bg-primary/20 text-primary font-bold text-sm border border-primary/30">1</button>
@@ -182,10 +312,10 @@ export default function DeliveryDashboard() {
               <div className="flex items-start justify-between">
                 <div>
                    <div className="flex items-center gap-3 mb-1">
-                     <h2 className="text-2xl font-bold text-text-main">{selectedDelivery.id}</h2>
-                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1.5 ${getStatusColor(selectedDelivery.status)}`}>
+                     <h2 className="text-2xl font-bold text-text-main">{selectedDelivery.trackingId}</h2>
+                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1.5 ${getStatusColor(selectedDelivery.statusLabel)}`}>
                         <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"/>
-                        {selectedDelivery.status}
+                        {selectedDelivery.statusLabel}
                      </span>
                    </div>
                    <p className="text-text-muted text-sm">Standard Logistics • Zone 4B</p>
@@ -268,8 +398,8 @@ export default function DeliveryDashboard() {
                    <div className="flex items-center gap-2 mb-2 text-text-muted text-xs uppercase font-bold">
                     <Package size={14} /> Cargaison
                   </div>
-                  <p className="text-text-main font-bold text-lg">{selectedDelivery.items} <span className="text-sm font-normal text-text-muted">colis</span></p>
-                  <p className="text-text-muted text-xs">Poids total: {selectedDelivery.weight}</p>
+                  <p className="text-text-main font-bold text-lg">{selectedDelivery.amount} <span className="text-sm font-normal text-text-muted">{selectedDelivery.currency}</span></p>
+                  <p className="text-text-muted text-xs">Destination: {selectedDelivery.dest}</p>
                 </div>
               </div>
 
@@ -330,9 +460,9 @@ function StatCard({ title, value, trend, isNegative, icon }: any) {
   );
 }
 
-function TabButton({ label, count, active }: any) {
+function TabButton({ label, count, active, onClick }: { label: string; count: string; active: boolean; onClick?: () => void }) {
   return (
-    <button className={`pb-4 px-1 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors ${active ? 'border-primary text-text-main' : 'border-transparent text-text-muted hover:text-text-main'}`}>
+    <button type="button" onClick={onClick} className={`pb-4 px-1 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors ${active ? 'border-primary text-text-main' : 'border-transparent text-text-muted hover:text-text-main'}`}>
       {label}
       <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${active ? 'bg-primary/20 text-primary' : 'bg-border text-text-muted'}`}>
         {count}

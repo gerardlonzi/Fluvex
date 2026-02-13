@@ -1,52 +1,139 @@
 'use client';
 
-import React, { useState } from 'react';
-import { 
-  Building2, BellRing, Blocks,Upload, Edit2, 
-  Mail, Phone, Fingerprint, MapPin, ShieldCheck, 
-  Key, Copy, Check, ShoppingBag, Cloud, Truck, Search, Bell, MessageSquare
+import React, { useEffect, useState } from 'react';
+import {
+  Building2,
+  BellRing,
+  Blocks,
+  Upload,
+  Edit2,
+  Mail,
+  Phone,
+  Fingerprint,
+  MapPin,
+  ShieldCheck,
+  Key,
+  Copy,
+  Check,
+  ShoppingBag,
+  Cloud,
+  Truck,
+  Search,
+  Bell,
+  MessageSquare,
 } from 'lucide-react';
 
 export default function SettingsPage() {
-  // --- ÉTATS ---
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'integrations'>('profile');
   const [isSaved, setIsSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  // État du formulaire
   const [companyData, setCompanyData] = useState({
-    name: "EcoLogistics Solutions Inc.",
-    email: "admin@ecologistics.com",
-    phone: "+1 (555) 123-4567",
-    taxId: "US-987654321",
-    address: "123 Green Supply Chain Blvd, Suite 400\nSan Francisco, CA 94107"
+    name: '',
+    email: '',
+    phone: '',
+    taxId: '',
+    address: '',
+    currency: 'CFA',
   });
 
-  // État des notifications
   const [notifs, setNotifs] = useState({
     shipments: true,
     fleet: true,
-    billing: false
+    billing: false,
   });
 
-  // --- ACTIONS ---
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [companyRes, notifRes] = await Promise.all([
+          fetch('/api/company'),
+          fetch('/api/settings/notifications'),
+        ]);
+
+        if (companyRes.ok) {
+          const company = await companyRes.json();
+          setCompanyData({
+            name: company.name ?? '',
+            email: company.email ?? '',
+            phone: company.phone ?? '',
+            taxId: company.taxId ?? '',
+            address:
+              company.address && company.city
+                ? `${company.address}\n${company.city}`
+                : company.address ?? '',
+            currency: company.currency ?? 'CFA',
+          });
+        }
+
+        if (notifRes.ok) {
+          const prefs = await notifRes.json();
+          setNotifs({
+            shipments: !!prefs.shipments,
+            fleet: !!prefs.fleet,
+            billing: !!prefs.billing,
+          });
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   const handleCopyKey = () => {
-    navigator.clipboard.writeText("pk_live_51Mz...q3tZ8x9");
+    navigator.clipboard.writeText('pk_live_51Mz...q3tZ8x9');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSave = () => {
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
-    // Ici, tu ajouterais ton appel API
+  const handleSave = async () => {
+    setIsSaved(false);
+    setSaveError(null);
+    try {
+      const [companyRes, notifRes] = await Promise.all([
+        fetch('/api/company', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: companyData.name,
+            email: companyData.email,
+            phone: companyData.phone,
+            taxId: companyData.taxId,
+            address: companyData.address,
+            currency: companyData.currency,
+          }),
+        }),
+        fetch('/api/settings/notifications', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(notifs),
+        }),
+      ]);
+
+      if (!companyRes.ok || !notifRes.ok) {
+        const errCompany = await companyRes.json().catch(() => ({}));
+        const errNotif = await notifRes.json().catch(() => ({}));
+        const msg =
+          errCompany.error ||
+          errNotif.error ||
+          'Impossible de sauvegarder les paramètres.';
+        setSaveError(msg);
+        return;
+      }
+
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 3000);
+    } catch {
+      setSaveError('Erreur réseau lors de la sauvegarde.');
+    }
   };
 
   return (
     <div className="flex-1 bg-background text-text-main min-h-screen">
-      {/* HEADER LOCAL (Si pas déjà dans le layout) */}
-     
-
       <main className="max-w-5xl mx-auto px-8 py-10">
         <div className="mb-10">
           <h2 className="text-3xl font-extrabold tracking-tight mb-2">Configuration</h2>
@@ -94,12 +181,16 @@ export default function SettingsPage() {
                 </button>
               </div>
 
+              {saveError && (
+                <p className="mb-4 text-sm text-red-500 font-medium">{saveError}</p>
+              )}
+
               <div className="bg-surface rounded-2xl border border-border p-8 shadow-xl">
                 {/* Logo Upload Simulation */}
                 <div className="flex items-center gap-6 mb-10 pb-10 border-b border-white/5">
                   <div className="relative group cursor-pointer">
                     <div className="size-24 rounded-2xl bg-border border-2 border-dashed border-border flex items-center justify-center overflow-hidden transition-colors group-hover:border-primary">
-                      <img src="https://i.pravatar.cc/150?u=company" className="w-full h-full object-cover" alt="Logo" />
+                    <img src="https://i.pravatar.cc/150?u=company" className="w-full h-full object-cover" alt="Logo" />
                       <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <Upload size={24} className="text-white" />
                       </div>
@@ -112,27 +203,53 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <InputField 
-                    label="Nom de l'entreprise" 
-                    icon={<Building2 size={16}/>} 
-                    value={companyData.name} 
-                    onChange={(val) => setCompanyData({...companyData, name: val})}
+                  <InputField
+                    label="Nom de l'entreprise"
+                    icon={<Building2 size={16} />}
+                    value={companyData.name}
+                    onChange={(val: string) =>
+                      setCompanyData({ ...companyData, name: val })
+                    }
                   />
-                  <InputField 
-                    label="Email Business" 
-                    icon={<Mail size={16}/>} 
-                    value={companyData.email} 
-                    onChange={(val) => setCompanyData({...companyData, email: val})}
+                  <InputField
+                    label="Email Business"
+                    icon={<Mail size={16} />}
+                    value={companyData.email}
+                    onChange={(val: string) =>
+                      setCompanyData({ ...companyData, email: val })
+                    }
                   />
-                  <InputField 
-                    label="Téléphone" 
-                    icon={<Phone size={16}/>} 
-                    value={companyData.phone} 
+                  <InputField
+                    label="Téléphone"
+                    icon={<Phone size={16} />}
+                    value={companyData.phone}
+                    onChange={(val: string) =>
+                      setCompanyData({ ...companyData, phone: val })
+                    }
                   />
-                  <InputField 
-                    label="N° TVA / Tax ID" 
-                    icon={<Fingerprint size={16}/>} 
-                    value={companyData.taxId} 
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-text-muted uppercase ml-1">Monnaie</label>
+                    <div className="relative">
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted">💰</div>
+                      <select
+                        value={companyData.currency}
+                        onChange={(e) => setCompanyData({ ...companyData, currency: e.target.value })}
+                        className="w-full bg-border border border-border rounded-xl py-3 pl-12 pr-4 text-sm text-text-main focus:ring-2 focus:ring-primary outline-none transition-all"
+                      >
+                        <option value="CFA">CFA (Franc CFA)</option>
+                        <option value="EUR">EUR (Euro)</option>
+                        <option value="USD">USD (Dollar US)</option>
+                        <option value="XOF">XOF (Franc Ouest-Africain)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <InputField
+                    label="N° TVA / Tax ID"
+                    icon={<Fingerprint size={16} />}
+                    value={companyData.taxId}
+                    onChange={(val: string) =>
+                      setCompanyData({ ...companyData, taxId: val })
+                    }
                   />
                   <div className="md:col-span-2 space-y-2">
                     <label className="text-xs font-bold text-text-muted uppercase ml-1">Adresse du Siège</label>
