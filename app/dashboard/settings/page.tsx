@@ -1,52 +1,188 @@
 'use client';
 
-import React, { useState } from 'react';
-import { 
-  Building2, BellRing, Blocks,Upload, Edit2, 
-  Mail, Phone, Fingerprint, MapPin, ShieldCheck, 
-  Key, Copy, Check, ShoppingBag, Cloud, Truck, Search, Bell, MessageSquare
+import React, { useEffect, useState } from 'react';
+import {
+  Building2,
+  BellRing,
+  Blocks,
+  Upload,
+  Edit2,
+  Mail,
+  Phone,
+  Fingerprint,
+  ShieldCheck,
+  Key,
+  Copy,
+  Check,
+  ShoppingBag,
+  Cloud,
+  Truck,
+  Sun,
+  Moon,
+  LogOut,
+  Globe,
 } from 'lucide-react';
+import { useTheme } from '@/src/components/ui/theme-provider';
+import { useLanguage } from '@/src/contexts/language-context';
+import { t } from '@/lib/i18n';
 
 export default function SettingsPage() {
-  // --- ÉTATS ---
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'integrations' | 'appearance'>('profile');
+  const { theme, toggleTheme } = useTheme();
+  const { lang, setLang } = useLanguage();
   const [isSaved, setIsSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  // État du formulaire
   const [companyData, setCompanyData] = useState({
-    name: "EcoLogistics Solutions Inc.",
-    email: "admin@ecologistics.com",
-    phone: "+1 (555) 123-4567",
-    taxId: "US-987654321",
-    address: "123 Green Supply Chain Blvd, Suite 400\nSan Francisco, CA 94107"
+    name: '',
+    email: '',
+    phone: '',
+    taxId: '',
+    address: '',
+    currency: 'CFA',
+    logoUrl: null as string | null,
   });
+  const [logoUploading, setLogoUploading] = useState(false);
 
-  // État des notifications
   const [notifs, setNotifs] = useState({
     shipments: true,
     fleet: true,
-    billing: false
+    billing: false,
   });
 
-  // --- ACTIONS ---
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [companyRes, notifRes] = await Promise.all([
+          fetch('/api/company'),
+          fetch('/api/settings/notifications'),
+        ]);
+
+        if (companyRes.ok) {
+          const company = await companyRes.json();
+          setCompanyData({
+            name: company.name ?? '',
+            email: company.email ?? '',
+            phone: company.phone ?? '',
+            taxId: company.taxId ?? '',
+            address:
+              company.address && company.city
+                ? `${company.address}\n${company.city}`
+                : company.address ?? '',
+            currency: company.currency ?? 'CFA',
+            logoUrl: company.logoUrl ?? null,
+          });
+        }
+
+        if (notifRes.ok) {
+          const prefs = await notifRes.json();
+          setNotifs({
+            shipments: !!prefs.shipments,
+            fleet: !!prefs.fleet,
+            billing: !!prefs.billing,
+          });
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const logoInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setSaveError('Veuillez choisir une image (PNG, JPG ou WEBP).');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setSaveError('Image trop volumineuse (max 2 Mo).');
+      return;
+    }
+    setLogoUploading(true);
+    setSaveError(null);
+    try {
+      const form = new FormData();
+      form.set('file', file);
+      form.set('folder', 'logo');
+      const res = await fetch('/api/upload', { method: 'POST', body: form });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Échec de l\'upload');
+      }
+      const { url } = await res.json();
+      setCompanyData((prev) => ({ ...prev, logoUrl: url }));
+      const patchRes = await fetch('/api/company', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ logoUrl: url }),
+      });
+      if (!patchRes.ok) setSaveError('Logo mis à jour localement. Cliquez sur Sauvegarder.');
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Erreur lors de l\'upload du logo.');
+    } finally {
+      setLogoUploading(false);
+      e.target.value = '';
+    }
+  };
+
   const handleCopyKey = () => {
-    navigator.clipboard.writeText("pk_live_51Mz...q3tZ8x9");
+    navigator.clipboard.writeText('pk_live_51Mz...q3tZ8x9');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSave = () => {
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
-    // Ici, tu ajouterais ton appel API
+  const handleSave = async () => {
+    setIsSaved(false);
+    setSaveError(null);
+    try {
+      const [companyRes, notifRes] = await Promise.all([
+        fetch('/api/company', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: companyData.name,
+            email: companyData.email,
+            phone: companyData.phone,
+            taxId: companyData.taxId,
+            address: companyData.address,
+            currency: companyData.currency,
+            logoUrl: companyData.logoUrl,
+          }),
+        }),
+        fetch('/api/settings/notifications', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(notifs),
+        }),
+      ]);
+
+      if (!companyRes.ok || !notifRes.ok) {
+        const errCompany = await companyRes.json().catch(() => ({}));
+        const errNotif = await notifRes.json().catch(() => ({}));
+        const msg =
+          errCompany.error ||
+          errNotif.error ||
+          'Impossible de sauvegarder les paramètres.';
+        setSaveError(msg);
+        return;
+      }
+
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 3000);
+    } catch {
+      setSaveError('Erreur réseau lors de la sauvegarde.');
+    }
   };
 
   return (
     <div className="flex-1 bg-background text-text-main min-h-screen">
-      {/* HEADER LOCAL (Si pas déjà dans le layout) */}
-     
-
       <main className="max-w-5xl mx-auto px-8 py-10">
         <div className="mb-10">
           <h2 className="text-3xl font-extrabold tracking-tight mb-2">Configuration</h2>
@@ -73,6 +209,12 @@ export default function SettingsPage() {
             icon={<Blocks size={18} />} 
             label="API & Intégrations" 
           />
+          <TabButton 
+            active={activeTab === 'appearance'} 
+            onClick={() => setActiveTab('appearance')}
+            icon={<Sun size={18} />} 
+            label="Apparence & Langue" 
+          />
         </div>
 
         {/* CONTENU DYNAMIQUE */}
@@ -94,45 +236,59 @@ export default function SettingsPage() {
                 </button>
               </div>
 
+              {saveError && (
+                <p className="mb-4 text-sm text-red-500 font-medium">{saveError}</p>
+              )}
+
               <div className="bg-surface rounded-2xl border border-border p-8 shadow-xl">
-                {/* Logo Upload Simulation */}
-                <div className="flex items-center gap-6 mb-10 pb-10 border-b border-white/5">
-                  <div className="relative group cursor-pointer">
-                    <div className="size-24 rounded-2xl bg-border border-2 border-dashed border-border flex items-center justify-center overflow-hidden transition-colors group-hover:border-primary">
-                      <img src="https://i.pravatar.cc/150?u=company" className="w-full h-full object-cover" alt="Logo" />
-                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Upload size={24} className="text-white" />
-                      </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <InputField
+                    label="Nom de l'entreprise"
+                    icon={<Building2 size={16} />}
+                    value={companyData.name}
+                    onChange={(val: string) =>
+                      setCompanyData({ ...companyData, name: val })
+                    }
+                  />
+                  <InputField
+                    label="Email Business"
+                    icon={<Mail size={16} />}
+                    value={companyData.email}
+                    onChange={(val: string) =>
+                      setCompanyData({ ...companyData, email: val })
+                    }
+                  />
+                  <InputField
+                    label="Téléphone"
+                    icon={<Phone size={16} />}
+                    value={companyData.phone}
+                    onChange={(val: string) =>
+                      setCompanyData({ ...companyData, phone: val })
+                    }
+                  />
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-text-muted uppercase ml-1">Monnaie</label>
+                    <div className="relative">
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted">💰</div>
+                      <select
+                        value={companyData.currency}
+                        onChange={(e) => setCompanyData({ ...companyData, currency: e.target.value })}
+                        className="w-full bg-border border border-border rounded-xl py-3 pl-12 pr-4 text-sm text-text-main focus:ring-2 focus:ring-primary outline-none transition-all"
+                      >
+                        <option value="CFA">CFA (Franc CFA)</option>
+                        <option value="EUR">EUR (Euro)</option>
+                        <option value="USD">USD (Dollar US)</option>
+                        <option value="XOF">XOF (Franc Ouest-Africain)</option>
+                      </select>
                     </div>
                   </div>
-                  <div>
-                    <h4 className="font-bold mb-1">Logo de l'entreprise</h4>
-                    <p className="text-sm text-text-muted">PNG ou JPG. Max 2MB.</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <InputField 
-                    label="Nom de l'entreprise" 
-                    icon={<Building2 size={16}/>} 
-                    value={companyData.name} 
-                    onChange={(val) => setCompanyData({...companyData, name: val})}
-                  />
-                  <InputField 
-                    label="Email Business" 
-                    icon={<Mail size={16}/>} 
-                    value={companyData.email} 
-                    onChange={(val) => setCompanyData({...companyData, email: val})}
-                  />
-                  <InputField 
-                    label="Téléphone" 
-                    icon={<Phone size={16}/>} 
-                    value={companyData.phone} 
-                  />
-                  <InputField 
-                    label="N° TVA / Tax ID" 
-                    icon={<Fingerprint size={16}/>} 
-                    value={companyData.taxId} 
+                  <InputField
+                    label="N° TVA / Tax ID"
+                    icon={<Fingerprint size={16} />}
+                    value={companyData.taxId}
+                    onChange={(val: string) =>
+                      setCompanyData({ ...companyData, taxId: val })
+                    }
                   />
                   <div className="md:col-span-2 space-y-2">
                     <label className="text-xs font-bold text-text-muted uppercase ml-1">Adresse du Siège</label>
@@ -141,6 +297,99 @@ export default function SettingsPage() {
                       value={companyData.address}
                       onChange={(e) => setCompanyData({...companyData, address: e.target.value})}
                     />
+                  </div>
+
+                {/* Nom et logo en bas + Déconnexion */}
+                <div className="mt-10 pt-10 border-t border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={handleLogoChange}
+                  />
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={() => logoInputRef.current?.click()}
+                      disabled={logoUploading}
+                      className="relative group cursor-pointer rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <div className="size-16 rounded-2xl bg-border border-2 border-dashed border-border flex items-center justify-center overflow-hidden transition-colors group-hover:border-primary">
+                        {companyData.logoUrl ? (
+                          <img src={companyData.logoUrl} className="w-full h-full object-cover" alt="Logo" />
+                        ) : (
+                          <Building2 className="w-8 h-8 text-text-muted" />
+                        )}
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl">
+                          {logoUploading ? <span className="text-xs text-white">…</span> : <Upload size={20} className="text-white" />}
+                        </div>
+                      </div>
+                    </button>
+                    <div>
+                      <h4 className="font-bold text-text-main">Nom et logo de l'entreprise</h4>
+                      <p className="text-sm text-text-muted">Modifiez le nom ci-dessus. Logo : PNG, JPG ou WEBP, max 2 Mo.</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+                        if (res.ok) window.location.href = '/login';
+                      } catch {}
+                    }}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-danger/50 text-danger hover:bg-danger/10 font-medium transition-colors"
+                  >
+                    <LogOut size={18} />
+                    Déconnexion
+                  </button>
+                </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'appearance' && (
+            <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <h3 className="text-xl font-bold mb-6">Apparence et langue</h3>
+              <div className="bg-surface rounded-2xl border border-border p-8 shadow-xl space-y-8">
+                <div>
+                  <h4 className="font-bold text-text-main mb-2 flex items-center gap-2">
+                    <Sun size={18} className="text-primary" />
+                    Thème
+                  </h4>
+                  <p className="text-sm text-text-muted mb-4">Choisissez le mode d'affichage de l'application.</p>
+                  <button
+                    type="button"
+                    onClick={toggleTheme}
+                    className="flex items-center gap-3 px-5 py-3 rounded-xl border border-border hover:bg-border/50 transition-colors"
+                  >
+                    {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                    {theme === 'dark' ? t(lang, 'sidebar.theme.light') : t(lang, 'sidebar.theme.dark')}
+                  </button>
+                </div>
+                <div>
+                  <h4 className="font-bold text-text-main mb-2 flex items-center gap-2">
+                    <Globe size={18} className="text-primary" />
+                    Langue
+                  </h4>
+                  <p className="text-sm text-text-muted mb-4">Langue d'affichage de l'interface.</p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setLang('fr')}
+                      className={`px-4 py-2 rounded-xl font-medium transition-colors ${lang === 'fr' ? 'bg-primary text-white' : 'bg-border text-text-muted hover:text-text-main'}`}
+                    >
+                      Français
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLang('en')}
+                      className={`px-4 py-2 rounded-xl font-medium transition-colors ${lang === 'en' ? 'bg-primary text-white' : 'bg-border text-text-muted hover:text-text-main'}`}
+                    >
+                      English
+                    </button>
                   </div>
                 </div>
               </div>

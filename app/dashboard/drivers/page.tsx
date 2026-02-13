@@ -1,46 +1,157 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { 
-  Leaf, Shield, Map, Phone, Mail, Edit3, Save, X, 
+import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import {
+  Leaf, Shield, Map, Phone, Mail, Edit3, Save, X,
   Search, Bell, MessageSquare, CheckCircle, Navigation,
   TrendingUp, Truck, Award, Calendar
 } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-// --- MOCK DATA ---
-const INITIAL_DRIVER = {
-  name: "Marcus Thorne",
-  id: "#8821",
-  role: "Senior Logistics Driver",
-  status: "ACTIVE",
-  phone: "+1 (555) 123-4567",
-  email: "marcus.t@ecosync.com",
-  vehicle: "Volvo VNL",
-  region: "West Coast",
-  since: "2019",
-  avatar: "https://i.pravatar.cc/150?u=17"
+type DriverApi = {
+  id: string;
+  code: string;
+  name: string;
+  status: 'ACTIVE' | 'IDLE' | 'MAINTENANCE';
+  phone: string | null;
+  email: string;
+  role: string | null;
+  region: string | null;
+  avatarUrl: string | null;
+  createdAt: string;
+  vehicle: { name: string } | null;
 };
 
-const ROUTES = [
-  { id: 1, date: "Jun 14, 2024", time: "08:30 AM", route: "Seattle → Portland", distance: "174 mi", score: 98, status: "Completed" },
-  { id: 2, date: "Jun 12, 2024", time: "06:15 AM", route: "Spokane → Seattle", distance: "279 mi", score: 84, status: "Completed" },
-  { id: 3, date: "Jun 10, 2024", time: "09:00 AM", route: "Local Distribution", distance: "45 mi", score: 96, status: "Completed" },
-  { id: 4, date: "Jun 08, 2024", time: "05:45 AM", route: "Vancouver → Seattle", distance: "142 mi", score: 92, status: "Completed" },
-];
+type DeliveryApi = {
+  id: string;
+  trackingId: string;
+  status: string;
+  createdAt: string;
+  amount: string | number | null;
+  currency: string;
+};
+
+type RouteRow = {
+  id: string;
+  date: string;
+  time: string;
+  route: string;
+  distance: string;
+  score: number;
+  status: string;
+};
 
 export default function PerformancePage() {
-  // --- ÉTATS ---
+  const searchParams = useSearchParams();
   const [isEditing, setIsEditing] = useState(false);
-  const [driver, setDriver] = useState(INITIAL_DRIVER);
+  const [drivers, setDrivers] = useState<DriverApi[]>([]);
+  const [selectedDriverId, setSelectedDriverId] = useState<string>('');
+  const [deliveries, setDeliveries] = useState<DeliveryApi[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    fetch('/api/drivers', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        const list = Array.isArray(data) ? (data as DriverApi[]) : [];
+        setDrivers(list);
+        const fromUrl = searchParams.get('driver');
+        const initial = fromUrl && list.some((d) => d.id === fromUrl) ? fromUrl : list[0]?.id ?? '';
+        setSelectedDriverId((prev) => prev || initial);
+      })
+      .finally(() => setLoading(false));
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!selectedDriverId) return;
+    const now = new Date();
+    const from = new Date(now);
+    from.setDate(from.getDate() - 60);
+    fetch(`/api/deliveries?driverId=${encodeURIComponent(selectedDriverId)}&from=${encodeURIComponent(from.toISOString())}`, { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setDeliveries(Array.isArray(data) ? (data as DeliveryApi[]) : []));
+  }, [selectedDriverId]);
+
+  const driver = useMemo(() => {
+    const d = drivers.find((x) => x.id === selectedDriverId) ?? drivers[0] ?? null;
+    if (!d) return null;
+    const createdYear = new Date(d.createdAt).getFullYear();
+    return {
+      name: d.name,
+      id: d.code,
+      role: d.role ?? 'Chauffeur',
+      status: d.status,
+      phone: d.phone ?? '—',
+      email: d.email,
+      vehicle: d.vehicle?.name ?? 'Non assigné',
+      region: d.region ?? '—',
+      since: Number.isFinite(createdYear) ? String(createdYear) : '—',
+      avatar: d.avatarUrl ?? `https://i.pravatar.cc/150?u=${encodeURIComponent(d.id)}`,
+    };
+  }, [drivers, selectedDriverId]);
+
+  const routes: RouteRow[] = useMemo(() => {
+    return deliveries.slice(0, 50).map((d) => {
+      const dt = new Date(d.createdAt);
+      const date = dt.toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: '2-digit' });
+      const time = dt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      const score = d.status === 'COMPLETED' ? 96 : d.status === 'DELAYED' ? 72 : 85;
+      return {
+        id: d.id,
+        date,
+        time,
+        route: `Livraison ${d.trackingId}`,
+        distance: '—',
+        score,
+        status: d.status,
+      };
+    });
+  }, [deliveries]);
+
+  /* Données pour le graphique Consommation par mois (basé sur les livraisons) */
+  const chartDataByMonth = useMemo(() => {
+    const byMonth = new Map<string, { month: string; livraisons: number; score: number }>();
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      byMonth.set(key, {
+        month: monthNames[d.getMonth()],
+        livraisons: 0,
+        score: 0,
+      });
+    }
+    deliveries.forEach((d) => {
+      const dt = new Date(d.createdAt);
+      const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      if (byMonth.has(key)) {
+        const entry = byMonth.get(key)!;
+        entry.livraisons += 1;
+        entry.score = Math.round((entry.score * (entry.livraisons - 1) + (d.status === 'COMPLETED' ? 96 : d.status === 'DELAYED' ? 72 : 85)) / entry.livraisons);
+      }
+    });
+    return Array.from(byMonth.values());
+  }, [deliveries]);
 
   // --- LOGIQUE ---
   const filteredRoutes = useMemo(() => {
-    return ROUTES.filter(r => 
+    return routes.filter(r => 
       r.route.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.date.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [searchQuery]);
+  }, [routes, searchQuery]);
+
+  const driverKpis = useMemo(() => {
+    const total = deliveries.length;
+    const completed = deliveries.filter((d) => d.status === 'COMPLETED').length;
+    const delayed = deliveries.filter((d) => d.status === 'DELAYED').length;
+    const ecoScore = total ? Math.max(50, Math.round(100 - (delayed / total) * 40)) : 0;
+    const safety = total ? Math.max(3.5, Math.min(5, 5 - (delayed / total) * 1.2)) : 0;
+    return { total, completed, delayed, ecoScore, safety };
+  }, [deliveries]);
 
   const handleSave = () => {
     setIsEditing(false);
@@ -60,10 +171,10 @@ export default function PerformancePage() {
             
             <div className="relative mb-6">
               <div className="size-32 mx-auto rounded-full border-4 border-surface shadow-2xl overflow-hidden ring-1 ring-border">
-                <img src={driver.avatar} alt={driver.name} className="w-full h-full object-cover" />
+                <img src={driver?.avatar || ''} alt={driver?.name || ''} className="w-full h-full object-cover" />
               </div>
               <span className="absolute bottom-1 right-1/4 bg-primary text-background text-[10px] font-black px-3 py-1 rounded-full border-2 border-surface">
-                {driver.status}
+                {driver?.status ?? '—'}
               </span>
             </div>
 
@@ -71,30 +182,32 @@ export default function PerformancePage() {
               <div className="space-y-3 mb-4">
                 <input 
                   className="w-full bg-border border border-border rounded-lg p-2 text-center text-sm text-text-main"
-                  value={driver.name}
-                  onChange={(e) => setDriver({...driver, name: e.target.value})}
+                  value={driver?.name ?? ''}
+                  onChange={() => {}}
+                  disabled
                 />
                 <input 
                   className="w-full bg-border border border-border rounded-lg p-2 text-center text-xs text-text-muted"
-                  value={driver.role}
-                  onChange={(e) => setDriver({...driver, role: e.target.value})}
+                  value={driver?.role ?? ''}
+                  onChange={() => {}}
+                  disabled
                 />
               </div>
             ) : (
               <>
-                <h1 className="text-2xl font-bold tracking-tight">{driver.name}</h1>
-                <p className="text-text-muted text-sm mb-6">{driver.role}</p>
+                <h1 className="text-2xl font-bold tracking-tight">{driver?.name ?? (loading ? 'Chargement…' : '—')}</h1>
+                <p className="text-text-muted text-sm mb-6">{driver?.role ?? '—'}</p>
               </>
             )}
 
             <div className="flex justify-center gap-2 mb-8">
-              <Badge label={`ID: ${driver.id}`} />
-              <Badge label={`Depuis ${driver.since}`} />
+              <Badge label={`ID: ${driver?.id ?? '—'}`} />
+              <Badge label={`Depuis ${driver?.since ?? '—'}`} />
             </div>
 
             <div className="grid grid-cols-2 gap-3 mb-8">
-              <InfoBox icon={<Truck size={16}/>} label="Véhicule" value={driver.vehicle} />
-              <InfoBox icon={<Map size={16}/>} label="Région" value={driver.region} />
+              <InfoBox icon={<Truck size={16}/>} label="Véhicule" value={driver?.vehicle ?? '—'} />
+              <InfoBox icon={<Map size={16}/>} label="Région" value={driver?.region ?? '—'} />
             </div>
 
             <button 
@@ -111,8 +224,8 @@ export default function PerformancePage() {
           {/* CONTACT INFO */}
           <div className="bg-surface rounded-3xl border border-border p-6 space-y-4">
             <h3 className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-4">Informations</h3>
-            <ContactRow icon={<Phone size={14}/>} label="Téléphone" value={driver.phone} />
-            <ContactRow icon={<Mail size={14}/>} label="Email" value={driver.email} />
+            <ContactRow icon={<Phone size={14}/>} label="Téléphone" value={driver?.phone ?? '—'} />
+            <ContactRow icon={<Mail size={14}/>} label="Email" value={driver?.email ?? '—'} />
             <div className="pt-4 border-t border-border">
               <h3 className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-3">Certifications</h3>
               <div className="flex flex-wrap gap-2">
@@ -126,41 +239,59 @@ export default function PerformancePage() {
 
         {/* COLONNE DROITE : ANALYTICS */}
         <div className="lg:col-span-8 xl:col-span-9 space-y-6">
-          {/* METRICS GRID */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <MetricCard title="Score Éco" value="94" sub="/100" trend="+2.1%" icon={<Leaf size={20}/>} color="primary" />
-            <MetricCard title="Note Sécurité" value="4.8" sub="/5.0" trend="+0.5%" icon={<Shield size={20}/>} color="blue" />
-            <MetricCard title="Distance Totale" value="42,508" trend="1.2k" icon={<Navigation size={20}/>} color="orange" />
+          <div className="bg-surface rounded-3xl border border-border p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-bold text-text-main">Sélectionner un chauffeur</h2>
+              <p className="text-xs text-text-muted">Données réelles via API (livraisons liées au chauffeur).</p>
+            </div>
+            <select value={selectedDriverId} onChange={(e) => setSelectedDriverId(e.target.value)} className="bg-background border border-border rounded-xl px-4 py-2 text-sm text-text-main">
+              {drivers.length === 0 ? (
+                <option value="">Pas de chauffeur</option>
+              ) : (
+                drivers.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name} • {d.code}</option>
+                ))
+              )}
+            </select>
+            {drivers.length === 0 && (
+              <p className="text-xs text-text-muted mt-1">Aucun chauffeur enregistré. Ajoutez-en un dans Gestion de Flotte.</p>
+            )}
           </div>
 
-          {/* CHART */}
+          {/* METRICS GRID */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <MetricCard title="Score Éco (proxy)" value={String(driverKpis.ecoScore || 0)} sub="/100" trend={driverKpis.total ? `${driverKpis.completed}/${driverKpis.total}` : '—'} icon={<Leaf size={20}/>} color="primary" />
+            <MetricCard title="Note Sécurité (proxy)" value={driverKpis.safety ? driverKpis.safety.toFixed(1) : '—'} sub="/5.0" trend={driverKpis.delayed ? `${driverKpis.delayed} retard(s)` : '—'} icon={<Shield size={20}/>} color="blue" />
+            <MetricCard title="Livraisons (60j)" value={String(driverKpis.total)} trend={`${driverKpis.completed} terminées`} icon={<Navigation size={20}/>} color="orange" />
+          </div>
+
+          {/* CHART - Données réelles */}
           <div className="bg-surface rounded-3xl border border-border p-8 shadow-2xl">
             <div className="flex flex-col sm:flex-row justify-between items-start mb-8 gap-4">
               <div>
-                <h3 className="text-xl font-bold text-text-main">Consommation (MPG)</h3>
-                <p className="text-sm text-text-muted">Moyenne de carburant sur les 6 derniers mois</p>
+                <h3 className="text-xl font-bold text-text-main">Activité (6 derniers mois)</h3>
+                <p className="text-sm text-text-muted">Livraisons et score moyen par mois pour ce chauffeur</p>
               </div>
               <div className="text-right">
-                <span className="text-3xl font-black text-primary">8.4 <span className="text-sm font-normal text-text-muted">MPG</span></span>
-                <p className="text-[10px] font-bold text-primary uppercase">Top 5% de la flotte</p>
+                <span className="text-3xl font-black text-primary">{driverKpis.total} <span className="text-sm font-normal text-text-muted">livraisons</span></span>
+                <p className="text-[10px] font-bold text-primary uppercase">60 derniers jours</p>
               </div>
             </div>
-            
-            {/* SVG CHART - RE-STYLISÉ */}
-            <div className="h-64 w-full group">
-              <svg className="w-full h-full" viewBox="0 0 500 150" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#13ec5b" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#13ec5b" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                <path d="M0,120 Q50,40 100,80 T200,60 T300,100 T400,20 T500,50 L500,150 L0,150 Z" fill="url(#grad)" />
-                <path d="M0,120 Q50,40 100,80 T200,60 T300,100 T400,20 T500,50" fill="none" stroke="#13ec5b" strokeWidth="4" strokeLinecap="round" />
-              </svg>
-              <div className="flex justify-between mt-4 px-2 text-[10px] font-bold text-text-muted uppercase">
-                <span>Jan</span><span>Fev</span><span>Mar</span><span>Avr</span><span>Mai</span><span>Juin</span>
-              </div>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartDataByMonth}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="month" stroke="var(--text-muted)" style={{ fontSize: '10px' }} />
+                  <YAxis stroke="var(--text-muted)" style={{ fontSize: '10px' }} yAxisId="left" />
+                  <YAxis stroke="var(--text-muted)" style={{ fontSize: '10px' }} yAxisId="right" orientation="right" />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-main)' }}
+                    labelStyle={{ color: 'var(--text-main)' }}
+                  />
+                  <Line yAxisId="left" type="monotone" dataKey="livraisons" name="Livraisons" stroke="#13ec5b" strokeWidth={3} dot={{ fill: '#13ec5b', r: 4 }} />
+                  <Line yAxisId="right" type="monotone" dataKey="score" name="Score moyen" stroke="#6366f1" strokeWidth={2} strokeDasharray="4 4" dot={{ fill: '#6366f1', r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
@@ -200,9 +331,15 @@ export default function PerformancePage() {
                         </span>
                       </td>
                       <td className="px-8 py-5 text-right">
-                        <div className="flex items-center justify-end gap-2 text-primary font-bold text-xs">
-                          <CheckCircle size={14} /> Terminée
-                        </div>
+                        {route.status === 'COMPLETED' ? (
+                          <div className="flex items-center justify-end gap-2 text-primary font-bold text-xs">
+                            <CheckCircle size={14} /> Terminée
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-end gap-2 text-text-muted font-bold text-xs">
+                            <Calendar size={14} /> {route.status}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}

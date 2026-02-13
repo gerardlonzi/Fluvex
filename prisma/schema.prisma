@@ -1,0 +1,396 @@
+// Fluvex - Schéma Prisma (Version MongoDB)
+// Adapté pour MongoDB Atlas
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// ========== ENUMS ==========
+
+enum DriverStatus {
+  ACTIVE
+  IDLE
+  MAINTENANCE
+}
+
+enum VehicleStatus {
+  ACTIVE
+  MAINTENANCE
+  INACTIVE
+}
+
+enum DeliveryStatus {
+  PENDING
+  LOADING
+  TRANSIT
+  DELAYED
+  COMPLETED
+  CANCELLED
+}
+
+enum RouteStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum AlertType {
+  BREAKDOWN
+  SPEED
+  WEATHER
+  OPTIMIZATION
+  OTHER
+}
+
+enum IntegrationProvider {
+  SHOPIFY
+  SAP_ERP
+  SALESFORCE
+}
+
+enum IntegrationStatus {
+  CONNECTED
+  PENDING
+  DISCONNECTED
+}
+
+// ========== AUTH & ORGANISATION ==========
+
+model Company {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  email     String
+  phone     String?
+  taxId     String?
+  address   String?
+  city      String?
+  country   String   @default("FR")
+  fleetSize String?
+  industry  String   @default("logistics")
+  logoUrl   String?
+  currency  String?  @default("CFA")
+
+  users                 User[]
+  drivers               Driver[]
+  vehicles              Vehicle[]
+  deliveries            Delivery[]
+  alerts                Alert[]
+  apiKeys               ApiKey[]
+  integrations          Integration[]
+  notificationPrefs     NotificationPreference[]
+  sustainabilityMetrics SustainabilityMetric[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  email        String   @unique
+  passwordHash String?
+  firstName    String?
+  lastName     String?
+  phone        String?
+  jobTitle     String?
+  avatarUrl    String?
+  role         String   @default("user")
+
+  companyId String  @db.ObjectId
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  notifications Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ========== FLOTTE & CHAUFFEURS ==========
+
+model Driver {
+  id        String       @id @default(auto()) @map("_id") @db.ObjectId
+  code      String       @unique
+  name      String
+  email     String
+  phone     String?
+  role      String?
+  status    DriverStatus @default(ACTIVE)
+  region    String?
+  avatarUrl String?
+  joinedAt  DateTime?
+
+  companyId String  @db.ObjectId
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  vehicleId String?  @db.ObjectId
+  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id])
+
+  certifications DriverCertification[]
+  deliveries     Delivery[]
+  routes         Route[]
+  performance    DriverPerformance?
+  metrics        DriverMetric[]
+  locations      DriverLocation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DriverCertification {
+  id    String  @id @default(auto()) @map("_id") @db.ObjectId
+  label String
+  type  String?
+
+  driverId String @db.ObjectId
+  driver   Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+}
+
+model DriverPerformance {
+  id              String @id @default(auto()) @map("_id") @db.ObjectId
+  ecoScore        Int?
+  safetyScore     Float?
+  totalDistance   Float?
+  mpgAverage      Float?
+  deliveriesCount Int?   @default(0)
+
+  driverId String @unique @db.ObjectId
+  driver   Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  measuredAt DateTime @updatedAt
+}
+
+model DriverMetric {
+  id    String  @id @default(auto()) @map("_id") @db.ObjectId
+  title String
+  value String
+  sub   String?
+  trend String?
+  color String?
+
+  driverId String @db.ObjectId
+  driver   Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model Vehicle {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  plateNumber String?
+  status      VehicleStatus @default(ACTIVE)
+
+  companyId String  @db.ObjectId
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  drivers    Driver[]
+  deliveries Delivery[]
+  alerts     Alert[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ========== LIVRAISONS & ROUTES ==========
+
+model Delivery {
+  id         String         @id @default(auto()) @map("_id") @db.ObjectId
+  trackingId String         @unique
+  status     DeliveryStatus @default(PENDING)
+  amount     Float?         // MongoDB utilise Float pour les montants simples
+  currency   String         @default("CFA")
+
+  companyId String  @db.ObjectId
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  driverId  String?  @db.ObjectId
+  driver    Driver?  @relation(fields: [driverId], references: [id])
+  vehicleId String?  @db.ObjectId
+  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id])
+
+  locations DriverLocation[]
+  routes    Route[]
+  alerts    Alert[]
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Route {
+  id           String      @id @default(auto()) @map("_id") @db.ObjectId
+  routeRef     String?
+  origin       String?
+  destination  String?
+  distance     String?
+  distanceKm   Float?
+  date         DateTime?
+  time         String?
+  score        Int?
+  status       RouteStatus @default(PENDING)
+  progress     Int?
+  eta          String?
+  alertMessage String?
+
+  deliveryId String?   @db.ObjectId
+  delivery   Delivery? @relation(fields: [deliveryId], references: [id], onDelete: SetNull)
+
+  driverId String? @db.ObjectId
+  driver   Driver? @relation(fields: [driverId], references: [id])
+
+  stops     RouteStop[]
+  optimized OptimizedRoute?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ========== LOCALISATION TEMPS RÉEL ==========
+
+model DriverLocation {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  driverId   String  @db.ObjectId
+  deliveryId String? @db.ObjectId
+
+  lat      Float
+  lng      Float
+  heading  Float?
+  speedKmh Float?
+
+  createdAt DateTime @default(now())
+
+  driver   Driver    @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  delivery Delivery? @relation(fields: [deliveryId], references: [id])
+}
+
+model RouteStop {
+  id    String  @id @default(auto()) @map("_id") @db.ObjectId
+  label String
+  time  String?
+  order Int     @default(0)
+
+  routeId String @db.ObjectId
+  route   Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+}
+
+// ========== ANALYTICS & ALERTES ==========
+
+model Alert {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  type        AlertType
+  title       String
+  description String?
+  readAt      DateTime?
+
+  companyId String  @db.ObjectId
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  vehicleId  String?   @db.ObjectId
+  vehicle    Vehicle?  @relation(fields: [vehicleId], references: [id])
+  driverId   String?   @db.ObjectId
+  deliveryId String?   @db.ObjectId
+  delivery   Delivery? @relation(fields: [deliveryId], references: [id], onDelete: SetNull)
+  routeId    String?   @db.ObjectId
+
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id     String    @id @default(auto()) @map("_id") @db.ObjectId
+  type   String?
+  title  String?
+  body   String?
+  readAt DateTime?
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ========== PARAMÈTRES (SETTINGS) ==========
+
+model ApiKey {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  name       String?
+  keyMasked  String?
+  keyHash    String?
+  lastUsedAt DateTime?
+
+  companyId String  @db.ObjectId
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model Integration {
+  id          String              @id @default(auto()) @map("_id") @db.ObjectId
+  provider    IntegrationProvider
+  status      IntegrationStatus   @default(PENDING)
+  config      Json?
+  connectedAt DateTime?
+
+  companyId String  @db.ObjectId
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, provider])
+}
+
+model NotificationPreference {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  shipments Boolean @default(true)
+  fleet     Boolean @default(true)
+  billing   Boolean @default(false)
+
+  companyId String  @unique @db.ObjectId
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  updatedAt DateTime @updatedAt
+}
+
+// ========== SUSTAINABILITY (IMPACT ÉCOLOGIQUE) ==========
+
+model SustainabilityMetric {
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  period            String
+  co2AvoidedTonnes  Float?
+  co2TargetTonnes   Float?
+  fuelEfficiencyPct Float?
+  fleetAvgLPer100km Float?
+  evUsagePct        Float?
+  evActiveCount     Int?
+  treesEquivalent   Int?
+  savingsEur        Float?
+  timeSavedHours    Int?
+  ecoScore          Int?
+
+  companyId String  @db.ObjectId
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model OptimizedRoute {
+  id            String  @id @default(auto()) @map("_id") @db.ObjectId
+  routeRef      String?
+  vehicleType   String?
+  fromLocation  String?
+  toLocation    String?
+  co2Kg         String?
+  distanceKm    Float?
+  distanceLabel String?
+  badge         String?
+  scoreColor    String?
+
+  routeId String? @unique @db.ObjectId
+  route   Route?  @relation(fields: [routeId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+}
