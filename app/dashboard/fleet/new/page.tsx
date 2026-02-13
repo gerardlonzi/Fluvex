@@ -1,6 +1,6 @@
 'use client';
 
-import React, { FormEvent, useRef, useState } from 'react';
+import React, { FormEvent, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -17,6 +17,7 @@ import {
   CloudUpload,
   CheckCircle,
   Trash2,
+  Plus,
 } from 'lucide-react';
 
 type UploadedFile = {
@@ -239,15 +240,16 @@ export default function NewDriverPage() {
                     </div>
                     <div className="col-span-2 md:col-span-1">
                       <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">
-                        Numéro de téléphone
+                        Numéro de téléphone <span className="text-red-500">*</span>
                       </label>
                       <input
-                        className="w-full bg-slate-50 dark:bg-background border border-slate-200 dark:border-border rounded-lg px-4 py-2.5 text-slate-900 dark:text-text-main focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600"
-                        placeholder="+1 (555) 000-0000"
+                        className={`w-full bg-slate-50 dark:bg-background border rounded-lg px-4 py-2.5 text-slate-900 dark:text-text-main focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600 ${fieldErrors.phone ? 'border-red-500' : 'border-slate-200 dark:border-border'}`}
+                        placeholder="+33 6 12 34 56 78"
                         type="tel"
                         value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
+                        onChange={(e) => { setPhone(e.target.value); setFieldErrors((p) => ({ ...p, phone: undefined })); }}
                       />
+                      {fieldErrors.phone && <p className="text-sm text-red-500 mt-1">{fieldErrors.phone}</p>}
                     </div>
                   </div>
                 </div>
@@ -263,7 +265,13 @@ export default function NewDriverPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">Expiration du permis</label>
-                    <input className="w-full bg-slate-50 dark:bg-background border border-slate-200 dark:border-border rounded-lg px-4 py-2.5 text-slate-900 dark:text-text-main focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600" type="date" />
+                    <input
+                      className={`w-full bg-slate-50 dark:bg-background border rounded-lg px-4 py-2.5 text-slate-900 dark:text-text-main focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all ${fieldErrors.licenseExpiry ? 'border-red-500' : 'border-slate-200 dark:border-border'}`}
+                      type="date"
+                      value={licenseExpiry}
+                      onChange={(e) => { setLicenseExpiry(e.target.value); setFieldErrors((p) => ({ ...p, licenseExpiry: undefined })); }}
+                    />
+                    {fieldErrors.licenseExpiry && <p className="text-sm text-red-500 mt-1">{fieldErrors.licenseExpiry}</p>}
                   </div>
                 </div>
               </section>
@@ -422,7 +430,7 @@ export default function NewDriverPage() {
                   {/* File List */}
                   <div className="space-y-3">
                     {docs.length === 0 ? (
-                      <p className="text-xs text-slate-500 dark:text-text-muted">Aucun document uploadé.</p>
+                      <p className="text-xs text-slate-500 dark:text-text-muted">Aucun document uploadé. Ajoutez au moins un document de conformité.</p>
                     ) : (
                       docs.map((d) => (
                         <div key={d.publicId} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-background rounded-lg border border-slate-200 dark:border-border">

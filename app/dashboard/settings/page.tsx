@@ -10,7 +10,6 @@ import {
   Mail,
   Phone,
   Fingerprint,
-  MapPin,
   ShieldCheck,
   Key,
   Copy,
@@ -18,13 +17,19 @@ import {
   ShoppingBag,
   Cloud,
   Truck,
-  Search,
-  Bell,
-  MessageSquare,
+  Sun,
+  Moon,
+  LogOut,
+  Globe,
 } from 'lucide-react';
+import { useTheme } from '@/src/components/ui/theme-provider';
+import { useLanguage } from '@/src/contexts/language-context';
+import { t } from '@/lib/i18n';
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'integrations'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'integrations' | 'appearance'>('profile');
+  const { theme, toggleTheme } = useTheme();
+  const { lang, setLang } = useLanguage();
   const [isSaved, setIsSaved] = useState(false);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -37,7 +42,9 @@ export default function SettingsPage() {
     taxId: '',
     address: '',
     currency: 'CFA',
+    logoUrl: null as string | null,
   });
+  const [logoUploading, setLogoUploading] = useState(false);
 
   const [notifs, setNotifs] = useState({
     shipments: true,
@@ -65,6 +72,7 @@ export default function SettingsPage() {
                 ? `${company.address}\n${company.city}`
                 : company.address ?? '',
             currency: company.currency ?? 'CFA',
+            logoUrl: company.logoUrl ?? null,
           });
         }
 
@@ -83,6 +91,46 @@ export default function SettingsPage() {
 
     fetchData();
   }, []);
+
+  const logoInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setSaveError('Veuillez choisir une image (PNG, JPG ou WEBP).');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setSaveError('Image trop volumineuse (max 2 Mo).');
+      return;
+    }
+    setLogoUploading(true);
+    setSaveError(null);
+    try {
+      const form = new FormData();
+      form.set('file', file);
+      form.set('folder', 'logo');
+      const res = await fetch('/api/upload', { method: 'POST', body: form });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Échec de l\'upload');
+      }
+      const { url } = await res.json();
+      setCompanyData((prev) => ({ ...prev, logoUrl: url }));
+      const patchRes = await fetch('/api/company', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ logoUrl: url }),
+      });
+      if (!patchRes.ok) setSaveError('Logo mis à jour localement. Cliquez sur Sauvegarder.');
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Erreur lors de l\'upload du logo.');
+    } finally {
+      setLogoUploading(false);
+      e.target.value = '';
+    }
+  };
 
   const handleCopyKey = () => {
     navigator.clipboard.writeText('pk_live_51Mz...q3tZ8x9');
@@ -105,6 +153,7 @@ export default function SettingsPage() {
             taxId: companyData.taxId,
             address: companyData.address,
             currency: companyData.currency,
+            logoUrl: companyData.logoUrl,
           }),
         }),
         fetch('/api/settings/notifications', {
@@ -160,6 +209,12 @@ export default function SettingsPage() {
             icon={<Blocks size={18} />} 
             label="API & Intégrations" 
           />
+          <TabButton 
+            active={activeTab === 'appearance'} 
+            onClick={() => setActiveTab('appearance')}
+            icon={<Sun size={18} />} 
+            label="Apparence & Langue" 
+          />
         </div>
 
         {/* CONTENU DYNAMIQUE */}
@@ -186,22 +241,6 @@ export default function SettingsPage() {
               )}
 
               <div className="bg-surface rounded-2xl border border-border p-8 shadow-xl">
-                {/* Logo Upload Simulation */}
-                <div className="flex items-center gap-6 mb-10 pb-10 border-b border-white/5">
-                  <div className="relative group cursor-pointer">
-                    <div className="size-24 rounded-2xl bg-border border-2 border-dashed border-border flex items-center justify-center overflow-hidden transition-colors group-hover:border-primary">
-                    <img src="https://i.pravatar.cc/150?u=company" className="w-full h-full object-cover" alt="Logo" />
-                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Upload size={24} className="text-white" />
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="font-bold mb-1">Logo de l'entreprise</h4>
-                    <p className="text-sm text-text-muted">PNG ou JPG. Max 2MB.</p>
-                  </div>
-                </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <InputField
                     label="Nom de l'entreprise"
@@ -258,6 +297,99 @@ export default function SettingsPage() {
                       value={companyData.address}
                       onChange={(e) => setCompanyData({...companyData, address: e.target.value})}
                     />
+                  </div>
+
+                {/* Nom et logo en bas + Déconnexion */}
+                <div className="mt-10 pt-10 border-t border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={handleLogoChange}
+                  />
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={() => logoInputRef.current?.click()}
+                      disabled={logoUploading}
+                      className="relative group cursor-pointer rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <div className="size-16 rounded-2xl bg-border border-2 border-dashed border-border flex items-center justify-center overflow-hidden transition-colors group-hover:border-primary">
+                        {companyData.logoUrl ? (
+                          <img src={companyData.logoUrl} className="w-full h-full object-cover" alt="Logo" />
+                        ) : (
+                          <Building2 className="w-8 h-8 text-text-muted" />
+                        )}
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl">
+                          {logoUploading ? <span className="text-xs text-white">…</span> : <Upload size={20} className="text-white" />}
+                        </div>
+                      </div>
+                    </button>
+                    <div>
+                      <h4 className="font-bold text-text-main">Nom et logo de l'entreprise</h4>
+                      <p className="text-sm text-text-muted">Modifiez le nom ci-dessus. Logo : PNG, JPG ou WEBP, max 2 Mo.</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+                        if (res.ok) window.location.href = '/login';
+                      } catch {}
+                    }}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-danger/50 text-danger hover:bg-danger/10 font-medium transition-colors"
+                  >
+                    <LogOut size={18} />
+                    Déconnexion
+                  </button>
+                </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'appearance' && (
+            <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <h3 className="text-xl font-bold mb-6">Apparence et langue</h3>
+              <div className="bg-surface rounded-2xl border border-border p-8 shadow-xl space-y-8">
+                <div>
+                  <h4 className="font-bold text-text-main mb-2 flex items-center gap-2">
+                    <Sun size={18} className="text-primary" />
+                    Thème
+                  </h4>
+                  <p className="text-sm text-text-muted mb-4">Choisissez le mode d'affichage de l'application.</p>
+                  <button
+                    type="button"
+                    onClick={toggleTheme}
+                    className="flex items-center gap-3 px-5 py-3 rounded-xl border border-border hover:bg-border/50 transition-colors"
+                  >
+                    {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                    {theme === 'dark' ? t(lang, 'sidebar.theme.light') : t(lang, 'sidebar.theme.dark')}
+                  </button>
+                </div>
+                <div>
+                  <h4 className="font-bold text-text-main mb-2 flex items-center gap-2">
+                    <Globe size={18} className="text-primary" />
+                    Langue
+                  </h4>
+                  <p className="text-sm text-text-muted mb-4">Langue d'affichage de l'interface.</p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setLang('fr')}
+                      className={`px-4 py-2 rounded-xl font-medium transition-colors ${lang === 'fr' ? 'bg-primary text-white' : 'bg-border text-text-muted hover:text-text-main'}`}
+                    >
+                      Français
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLang('en')}
+                      className={`px-4 py-2 rounded-xl font-medium transition-colors ${lang === 'en' ? 'bg-primary text-white' : 'bg-border text-text-muted hover:text-text-main'}`}
+                    >
+                      English
+                    </button>
                   </div>
                 </div>
               </div>

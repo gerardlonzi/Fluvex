@@ -21,7 +21,7 @@ type LiveLocation = {
 
 export default function FleetMap() {
   const mapRef = useRef<MapRef | null>(null);
-  const origin = useMemo(() => ({ lng: 2.3522, lat: 48.8566 }), []); // Paris (fallback)
+  const [origin, setOrigin] = useState({ lng: 2.3522, lat: 48.8566 }); // Paris (fallback)
 
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
@@ -30,6 +30,30 @@ export default function FleetMap() {
   const [routeGeoJson, setRouteGeoJson] = useState<GeoJSON.FeatureCollection | null>(null);
   const [routeMeta, setRouteMeta] = useState<{ distanceKm: number; durationMin: number } | null>(null);
   const [liveLocations, setLiveLocations] = useState<LiveLocation[]>([]);
+
+  // Charger l'adresse de l'entreprise pour positionner le hub
+  useEffect(() => {
+    fetch('/api/company', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((company) => {
+        if (company?.address && MAPBOX_TOKEN) {
+          const fullAddress = `${company.address}${company.city ? `, ${company.city}` : ''}${company.country ? `, ${company.country}` : ''}`;
+          fetch(
+            `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(fullAddress)}.json?access_token=${encodeURIComponent(MAPBOX_TOKEN)}&limit=1`
+          )
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+              if (data?.features?.[0]?.center) {
+                const [lng, lat] = data.features[0].center;
+                setOrigin({ lng, lat });
+                mapRef.current?.flyTo({ center: [lng, lat], zoom: 12 });
+              }
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!MAPBOX_TOKEN) return;
@@ -153,7 +177,7 @@ export default function FleetMap() {
           zoom: 12
         }}
         style={{ width: '100%', height: '100%' }}
-        mapStyle="mapbox://styles/mapbox/dark-v11"
+        mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
         mapboxAccessToken={MAPBOX_TOKEN}
         attributionControl={false} // On retire le logo par défaut pour le style
         ref={mapRef}

@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { 
-  Leaf, Shield, Map, Phone, Mail, Edit3, Save, X, 
+import { useSearchParams } from 'next/navigation';
+import {
+  Leaf, Shield, Map, Phone, Mail, Edit3, Save, X,
   Search, Bell, MessageSquare, CheckCircle, Navigation,
   TrendingUp, Truck, Award, Calendar
 } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 type DriverApi = {
   id: string;
@@ -41,7 +43,7 @@ type RouteRow = {
 };
 
 export default function PerformancePage() {
-  // --- ÉTATS ---
+  const searchParams = useSearchParams();
   const [isEditing, setIsEditing] = useState(false);
   const [drivers, setDrivers] = useState<DriverApi[]>([]);
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
@@ -55,10 +57,12 @@ export default function PerformancePage() {
       .then((data) => {
         const list = Array.isArray(data) ? (data as DriverApi[]) : [];
         setDrivers(list);
-        setSelectedDriverId((prev) => prev || list[0]?.id || '');
+        const fromUrl = searchParams.get('driver');
+        const initial = fromUrl && list.some((d) => d.id === fromUrl) ? fromUrl : list[0]?.id ?? '';
+        setSelectedDriverId((prev) => prev || initial);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!selectedDriverId) return;
@@ -104,6 +108,32 @@ export default function PerformancePage() {
         status: d.status,
       };
     });
+  }, [deliveries]);
+
+  /* Données pour le graphique Consommation par mois (basé sur les livraisons) */
+  const chartDataByMonth = useMemo(() => {
+    const byMonth = new Map<string, { month: string; livraisons: number; score: number }>();
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      byMonth.set(key, {
+        month: monthNames[d.getMonth()],
+        livraisons: 0,
+        score: 0,
+      });
+    }
+    deliveries.forEach((d) => {
+      const dt = new Date(d.createdAt);
+      const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      if (byMonth.has(key)) {
+        const entry = byMonth.get(key)!;
+        entry.livraisons += 1;
+        entry.score = Math.round((entry.score * (entry.livraisons - 1) + (d.status === 'COMPLETED' ? 96 : d.status === 'DELAYED' ? 72 : 85)) / entry.livraisons);
+      }
+    });
+    return Array.from(byMonth.values());
   }, [deliveries]);
 
   // --- LOGIQUE ---
@@ -216,13 +246,16 @@ export default function PerformancePage() {
             </div>
             <select value={selectedDriverId} onChange={(e) => setSelectedDriverId(e.target.value)} className="bg-background border border-border rounded-xl px-4 py-2 text-sm text-text-main">
               {drivers.length === 0 ? (
-                <option value="">Aucun chauffeur disponible</option>
+                <option value="">Pas de chauffeur</option>
               ) : (
                 drivers.map((d) => (
                   <option key={d.id} value={d.id}>{d.name} • {d.code}</option>
                 ))
               )}
             </select>
+            {drivers.length === 0 && (
+              <p className="text-xs text-text-muted mt-1">Aucun chauffeur enregistré. Ajoutez-en un dans Gestion de Flotte.</p>
+            )}
           </div>
 
           {/* METRICS GRID */}
@@ -232,34 +265,33 @@ export default function PerformancePage() {
             <MetricCard title="Livraisons (60j)" value={String(driverKpis.total)} trend={`${driverKpis.completed} terminées`} icon={<Navigation size={20}/>} color="orange" />
           </div>
 
-          {/* CHART */}
+          {/* CHART - Données réelles */}
           <div className="bg-surface rounded-3xl border border-border p-8 shadow-2xl">
             <div className="flex flex-col sm:flex-row justify-between items-start mb-8 gap-4">
               <div>
-                <h3 className="text-xl font-bold text-text-main">Consommation (MPG)</h3>
-                <p className="text-sm text-text-muted">Moyenne de carburant sur les 6 derniers mois</p>
+                <h3 className="text-xl font-bold text-text-main">Activité (6 derniers mois)</h3>
+                <p className="text-sm text-text-muted">Livraisons et score moyen par mois pour ce chauffeur</p>
               </div>
               <div className="text-right">
-                <span className="text-3xl font-black text-primary">8.4 <span className="text-sm font-normal text-text-muted">MPG</span></span>
-                <p className="text-[10px] font-bold text-primary uppercase">Top 5% de la flotte</p>
+                <span className="text-3xl font-black text-primary">{driverKpis.total} <span className="text-sm font-normal text-text-muted">livraisons</span></span>
+                <p className="text-[10px] font-bold text-primary uppercase">60 derniers jours</p>
               </div>
             </div>
-            
-            {/* SVG CHART - RE-STYLISÉ */}
-            <div className="h-64 w-full group">
-              <svg className="w-full h-full" viewBox="0 0 500 150" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#13ec5b" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#13ec5b" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                <path d="M0,120 Q50,40 100,80 T200,60 T300,100 T400,20 T500,50 L500,150 L0,150 Z" fill="url(#grad)" />
-                <path d="M0,120 Q50,40 100,80 T200,60 T300,100 T400,20 T500,50" fill="none" stroke="#13ec5b" strokeWidth="4" strokeLinecap="round" />
-              </svg>
-              <div className="flex justify-between mt-4 px-2 text-[10px] font-bold text-text-muted uppercase">
-                <span>Jan</span><span>Fev</span><span>Mar</span><span>Avr</span><span>Mai</span><span>Juin</span>
-              </div>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartDataByMonth}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="month" stroke="var(--text-muted)" style={{ fontSize: '10px' }} />
+                  <YAxis stroke="var(--text-muted)" style={{ fontSize: '10px' }} yAxisId="left" />
+                  <YAxis stroke="var(--text-muted)" style={{ fontSize: '10px' }} yAxisId="right" orientation="right" />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-main)' }}
+                    labelStyle={{ color: 'var(--text-main)' }}
+                  />
+                  <Line yAxisId="left" type="monotone" dataKey="livraisons" name="Livraisons" stroke="#13ec5b" strokeWidth={3} dot={{ fill: '#13ec5b', r: 4 }} />
+                  <Line yAxisId="right" type="monotone" dataKey="score" name="Score moyen" stroke="#6366f1" strokeWidth={2} strokeDasharray="4 4" dot={{ fill: '#6366f1', r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
 

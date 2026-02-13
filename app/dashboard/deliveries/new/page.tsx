@@ -6,9 +6,12 @@ import Link from 'next/link';
 import {
   Leaf, ChevronRight, UserCircle, Package, Truck, Calendar,
   Info, ArrowRight, CheckCircle2, AlertCircle, MapPin, Scale, Search,
-  CloudUpload, CheckCircle, Trash2,
+  CloudUpload, CheckCircle, Trash2, Plus,
 } from 'lucide-react';
 import { useToast } from '@/src/components/ui/toast';
+
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+type PlaceResult = { id: string; place_name: string; center: [number, number] };
 
 type Driver = { id: string; name: string; code: string };
 type Vehicle = { id: string; name: string; plateNumber: string | null };
@@ -47,6 +50,9 @@ export default function CreateLivraison() {
   const [packageType, setPackageType] = useState('');
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState<PlaceResult[]>([]);
+  const [addressSearching, setAddressSearching] = useState(false);
+  const addressSuggestionsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -57,6 +63,28 @@ export default function CreateLivraison() {
       setVehicles(v);
     });
   }, []);
+
+  /* Recherche d'adresse Mapbox (debounce) */
+  useEffect(() => {
+    if (!MAPBOX_TOKEN || !deliveryAddress.trim() || deliveryAddress.length < 3) {
+      setAddressSuggestions([]);
+      return;
+    }
+    const t = setTimeout(() => {
+      setAddressSearching(true);
+      fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(deliveryAddress)}.json?access_token=${encodeURIComponent(MAPBOX_TOKEN)}&autocomplete=true&limit=5&language=fr`
+      )
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: { features?: Array<{ id: string; place_name: string; center: [number, number] }> }) => {
+          const list = (data?.features ?? []).map((f) => ({ id: f.id, place_name: f.place_name, center: f.center }));
+          setAddressSuggestions(list);
+        })
+        .catch(() => setAddressSuggestions([]))
+        .finally(() => setAddressSearching(false));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [deliveryAddress]);
 
   const uploadToCloudinary = async (file: File, folder: string): Promise<UploadedFile> => {
     const fd = new FormData();
@@ -162,10 +190,9 @@ export default function CreateLivraison() {
                   <label className="block text-sm font-medium text-[#94a3b8] mb-2">Nom de l'entreprise <span className="text-red-400">*</span></label>
                   <input 
                     type="text" 
-                    required
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
-                    className="w-full bg-[#020617] border-[#1e293b] rounded-xl text-[#f8fafc] focus:ring-2 focus:ring-[#13ec5b] focus:border-transparent transition-all p-3" 
+                    className="w-full bg-[#020617] border border-[#1e293b] rounded-xl text-[#f8fafc] focus:ring-2 focus:ring-[#13ec5b] focus:border-transparent transition-all p-3" 
                     placeholder="ex: Acme Corp" 
                   />
                 </div>
@@ -173,10 +200,9 @@ export default function CreateLivraison() {
                   <label className="block text-sm font-medium text-[#94a3b8] mb-2">Nom du contact <span className="text-red-400">*</span></label>
                   <input 
                     type="text" 
-                    required
                     value={contactName}
                     onChange={(e) => setContactName(e.target.value)}
-                    className="w-full bg-[#020617] border-[#1e293b] rounded-xl text-[#f8fafc] focus:ring-2 focus:ring-[#13ec5b] p-3" 
+                    className="w-full bg-[#020617] border border-[#1e293b] rounded-xl text-[#f8fafc] focus:ring-2 focus:ring-[#13ec5b] p-3" 
                     placeholder="Jane Doe" 
                   />
                 </div>
@@ -184,26 +210,46 @@ export default function CreateLivraison() {
                   <label className="block text-sm font-medium text-[#94a3b8] mb-2">Numéro de téléphone <span className="text-red-400">*</span></label>
                   <input 
                     type="tel" 
-                    required
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="w-full bg-[#020617] border-[#1e293b] rounded-xl text-[#f8fafc] focus:ring-2 focus:ring-[#13ec5b] p-3" 
+                    className="w-full bg-[#020617] border border-[#1e293b] rounded-xl text-[#f8fafc] focus:ring-2 focus:ring-[#13ec5b] p-3" 
                     placeholder="+33 6 00 00 00 00" 
                   />
                 </div>
-                <div className="col-span-2">
+                <div className="col-span-2 relative">
                   <label className="block text-sm font-medium text-[#94a3b8] mb-2">Adresse de livraison <span className="text-red-400">*</span></label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#94a3b8]" />
                     <input 
                       type="text" 
-                      required
                       value={deliveryAddress}
                       onChange={(e) => setDeliveryAddress(e.target.value)}
-                      className="w-full bg-[#020617] border-[#1e293b] rounded-xl text-[#f8fafc] pl-11 p-3 focus:ring-2 focus:ring-[#13ec5b]" 
+                      className="w-full bg-[#020617] border border-[#1e293b] rounded-xl text-[#f8fafc] pl-11 p-3 focus:ring-2 focus:ring-[#13ec5b]" 
                       placeholder="Commencez à taper une adresse..." 
+                      autoComplete="off"
                     />
+                    {addressSearching && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#94a3b8]">Recherche…</span>}
                   </div>
+                  {addressSuggestions.length > 0 && (
+                    <div ref={addressSuggestionsRef} className="absolute top-full left-0 right-0 mt-1 rounded-xl border border-[#1e293b] bg-[#0f172a] shadow-xl z-50 overflow-hidden">
+                      {addressSuggestions.map((r) => (
+                        <button
+                          key={r.id}
+                          type="button"
+                          className="w-full text-left px-4 py-3 text-sm text-[#f8fafc] hover:bg-[#1e293b] transition-colors"
+                          onClick={() => {
+                            setDeliveryAddress(r.place_name);
+                            setAddressSuggestions([]);
+                          }}
+                        >
+                          {r.place_name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!MAPBOX_TOKEN && (
+                    <p className="text-xs text-amber-500 mt-1">Configurez NEXT_PUBLIC_MAPBOX_TOKEN pour activer la recherche d&apos;adresse.</p>
+                  )}
                 </div>
               </div>
             </section>
@@ -224,9 +270,8 @@ export default function CreateLivraison() {
                     <Scale className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94a3b8]" />
                     <input 
                       type="number" 
-                      required
-                      min="0.1"
-                      step="0.1"
+                      min={0.1}
+                      step={0.1}
                       value={weight}
                       onChange={(e) => setWeight(e.target.value)}
                       className="w-full bg-[#020617] border-[#1e293b] rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]" 
@@ -239,29 +284,26 @@ export default function CreateLivraison() {
                   <div className="flex gap-2">
                     <input 
                       type="number" 
-                      required
-                      min="1"
+                      min={1}
                       value={length}
                       onChange={(e) => setLength(e.target.value)}
-                      className="w-full bg-[#020617] border-[#1e293b] rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]" 
+                      className="w-full bg-[#020617] border border-[#1e293b] rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]" 
                       placeholder="L" 
                     />
                     <input 
                       type="number" 
-                      required
-                      min="1"
+                      min={1}
                       value={width}
                       onChange={(e) => setWidth(e.target.value)}
-                      className="w-full bg-[#020617] border-[#1e293b] rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]" 
+                      className="w-full bg-[#020617] border border-[#1e293b] rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]" 
                       placeholder="l" 
                     />
                     <input 
                       type="number" 
-                      required
-                      min="1"
+                      min={1}
                       value={height}
                       onChange={(e) => setHeight(e.target.value)}
-                      className="w-full bg-[#020617] border-[#1e293b] rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]" 
+                      className="w-full bg-[#020617] border border-[#1e293b] rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]" 
                       placeholder="H" 
                     />
                   </div>
@@ -269,7 +311,6 @@ export default function CreateLivraison() {
                 <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-[#94a3b8] mb-2">Type de colis <span className="text-red-400">*</span></label>
                   <select 
-                    required
                     value={packageType}
                     onChange={(e) => setPackageType(e.target.value)}
                     className="w-full bg-[#020617] border-[#1e293b] rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b] appearance-none"
@@ -314,28 +355,50 @@ export default function CreateLivraison() {
                 </div>
               )}
 
-              <select
-                required
-                className="w-full bg-[#020617] border-[#1e293b] rounded-xl text-[#f8fafc] p-4 focus:ring-2 focus:ring-[#13ec5b]"
-                value={driverId}
-                onChange={(e) => setDriverId(e.target.value)}
-              >
-                <option value="">Sélectionner un chauffeur <span className="text-red-400">*</span></option>
-                {drivers.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name} • {d.code}</option>
-                ))}
-              </select>
-              <select
-                required
-                className="w-full bg-[#020617] border-[#1e293b] rounded-xl text-[#f8fafc] p-4 focus:ring-2 focus:ring-[#13ec5b] mt-4"
-                value={vehicleId}
-                onChange={(e) => setVehicleId(e.target.value)}
-              >
-                <option value="">Sélectionner un véhicule <span className="text-red-400">*</span></option>
-                {vehicles.map((v) => (
-                  <option key={v.id} value={v.id}>{v.name} {v.plateNumber ? `• ${v.plateNumber}` : ''}</option>
-                ))}
-              </select>
+              <div>
+                <select
+                  className="w-full bg-[#020617] border border-[#1e293b] rounded-xl text-[#f8fafc] p-4 focus:ring-2 focus:ring-[#13ec5b]"
+                  value={driverId}
+                  onChange={(e) => setDriverId(e.target.value)}
+                >
+                  <option value="">Sélectionner un chauffeur</option>
+                  {drivers.length === 0 ? (
+                    <option value="" disabled>Pas de chauffeur</option>
+                  ) : (
+                    drivers.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name} • {d.code}</option>
+                    ))
+                  )}
+                </select>
+                {drivers.length === 0 && (
+                  <p className="text-xs text-[#94a3b8] mt-1">Aucun chauffeur. Ajoutez-en dans Performance / Flotte.</p>
+                )}
+              </div>
+              <div className="mt-4">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-sm text-[#94a3b8]">Véhicule</span>
+                  <Link href="/dashboard/fleet/vehicle/new" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
+                    <Plus className="w-3 h-3" /> Ajouter un véhicule
+                  </Link>
+                </div>
+                <select
+                  className="w-full bg-[#020617] border border-[#1e293b] rounded-xl text-[#f8fafc] p-4 focus:ring-2 focus:ring-[#13ec5b]"
+                  value={vehicleId}
+                  onChange={(e) => setVehicleId(e.target.value)}
+                >
+                  <option value="">Sélectionner un véhicule</option>
+                  {vehicles.length === 0 ? (
+                    <option value="" disabled>Pas de véhicule</option>
+                  ) : (
+                    vehicles.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name} {v.plateNumber ? `• ${v.plateNumber}` : ''}</option>
+                    ))
+                  )}
+                </select>
+                {vehicles.length === 0 && (
+                  <p className="text-xs text-[#94a3b8] mt-1">Aucun véhicule. Cliquez sur &quot;Ajouter un véhicule&quot; ci-dessus.</p>
+                )}
+              </div>
             </section>
 
             {/* Priority Selection */}
@@ -378,7 +441,6 @@ export default function CreateLivraison() {
                   <label className="block text-sm font-medium text-[#94a3b8] mb-2">Date de livraison <span className="text-red-400">*</span></label>
                   <input 
                     type="date" 
-                    required
                     value={scheduledDate}
                     onChange={(e) => setScheduledDate(e.target.value)}
                     className="w-full bg-[#020617] border-[#1e293b] rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]" 
@@ -387,7 +449,6 @@ export default function CreateLivraison() {
                 <div>
                   <label className="block text-sm font-medium text-[#94a3b8] mb-2">Heure de livraison <span className="text-red-400">*</span></label>
                   <select 
-                    required
                     value={scheduledTime}
                     onChange={(e) => setScheduledTime(e.target.value)}
                     className="w-full bg-[#020617] border-[#1e293b] rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]"
@@ -434,9 +495,8 @@ export default function CreateLivraison() {
                     <div className="flex items-center gap-2 mt-1">
                       <input
                         type="number"
-                        required
-                        min="0"
-                        step="0.01"
+                        min={0}
+                        step={0.01}
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         className="text-2xl font-black text-[#f8fafc] bg-transparent border-none outline-none w-full"

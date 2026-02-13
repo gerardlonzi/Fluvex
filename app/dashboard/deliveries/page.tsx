@@ -7,7 +7,7 @@ import {
   ChevronRight, ChevronLeft, Truck, CheckCircle,
   Clock, AlertTriangle, MoreVertical, MapPin,
   Phone, User, X, Package, ShieldCheck,
-  Plus,
+  Plus, Trash2,
 } from 'lucide-react';
 import { downloadExport } from '@/utils/downloadExport';
 
@@ -52,6 +52,7 @@ export default function DeliveryDashboard() {
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryRow | null>(null);
   const [dateFilter, setDateFilter] = useState<{ from: string; to: string }>({ from: '', to: '' });
   const [showDateFilter, setShowDateFilter] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/deliveries', { credentials: 'include' })
@@ -114,6 +115,21 @@ export default function DeliveryDashboard() {
     setExporting(true);
     await downloadExport('/api/export/deliveries?format=csv', 'livraisons.csv');
     setExporting(false);
+  };
+
+  const handleDeleteDelivery = async (id: string) => {
+    if (typeof window === 'undefined') return;
+    if (!window.confirm('Supprimer cette livraison ?')) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/deliveries/${id}`, { method: 'DELETE', credentials: 'include' });
+      if (res.ok) {
+        setDeliveries((prev) => prev.filter((d) => d.id !== id));
+        setSelectedDelivery(null);
+      }
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -321,7 +337,15 @@ export default function DeliveryDashboard() {
                    <p className="text-text-muted text-sm">Standard Logistics • Zone 4B</p>
                 </div>
                 <div className="flex gap-2">
-                  <button className="p-2 hover:bg-border rounded-lg text-text-muted transition-colors"><MoreVertical size={20}/></button>
+                  <button
+                    type="button"
+                    onClick={() => selectedDelivery && handleDeleteDelivery(selectedDelivery.id)}
+                    disabled={deletingId === selectedDelivery?.id}
+                    className="p-2 hover:bg-danger/10 rounded-lg text-text-muted hover:text-danger transition-colors"
+                    title="Supprimer la livraison"
+                  >
+                    <Trash2 size={20} />
+                  </button>
                   <button onClick={() => setSelectedDelivery(null)} className="p-2 hover:bg-border rounded-lg text-text-main transition-colors"><X size={20}/></button>
                 </div>
               </div>

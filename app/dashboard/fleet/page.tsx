@@ -162,7 +162,7 @@ export default function FleetPage() {
         </div>
 
         {/* TABLEAU DYNAMIQUE */}
-        <div className="bg-surface rounded-2xl border border-border overflow-hidden shadow-2xl">
+        <div className="bg-surface rounded-2xl border border-border overflow-visible shadow-2xl">
           {loading ? (
             <div className="p-12 text-center text-text-muted">Chargement des chauffeurs...</div>
           ) : (
