@@ -6,11 +6,11 @@ import { registerCompanySchema, registerUserSchema, registerSecuritySchema } fro
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    
     const companyData = registerCompanySchema.safeParse({
       companyName: body.companyName,
       email: body.email,
       address: body.address,
-      city: body.city,
       country: body.country ?? "FR",
       fleetSize: body.fleetSize,
       industry: body.industry ?? "logistics",
@@ -26,6 +26,7 @@ export async function POST(request: Request) {
       confirmPassword: body.confirmPassword,
       agreeTerms: body.agreeTerms,
     });
+    console.log(companyData);
 
     if (!companyData.success) {
       return NextResponse.json(
@@ -58,7 +59,6 @@ export async function POST(request: Request) {
         name: companyData.data.companyName,
         email: companyData.data.email,
         address: companyData.data.address,
-        city: companyData.data.city,
         country: companyData.data.country,
         fleetSize: companyData.data.fleetSize ?? null,
         industry: companyData.data.industry,

@@ -9,7 +9,11 @@ export async function POST(request: Request) {
     const parsed = loginSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Email ou mot de passe invalide", details: parsed.error.flatten() },
+        { error:{
+          email: "Email invalide",
+          password: "Mot de passe incorrect",
+        },
+          details: parsed.error.flatten() },
         { status: 400 }
       );
     }
@@ -18,12 +22,16 @@ export async function POST(request: Request) {
       where: { email: parsed.data.email },
       include: { company: true },
     });
-    if (!user?.passwordHash) {
-      return NextResponse.json({ error: "Email ou mot de passe incorrect" }, { status: 401 });
+    if (!user) {
+      return NextResponse.json({ error:{
+        email: "Email invalide",
+      } }, { status: 401 });
     }
 
-    if (!verifyPassword(user.passwordHash, parsed.data.password)) {
-      return NextResponse.json({ error: "Email ou mot de passe incorrect" }, { status: 401 });
+    if (!verifyPassword(user?.passwordHash ?? '', parsed.data.password)) {
+      return NextResponse.json({ error:{
+        password: "Mot de passe incorrect",
+      } }, { status: 401 });
     }
 
     const session = createSession(user.id, user.companyId);
