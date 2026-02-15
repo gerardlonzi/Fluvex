@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
-  Leaf, Shield, Map, Phone, Mail, Edit3, Save, X,
+  Leaf, Shield, Map as MapIcon, Phone, Mail, Edit3, Save, X,
   Search, Bell, MessageSquare, CheckCircle, Navigation,
   TrendingUp, Truck, Award, Calendar
 } from 'lucide-react';
@@ -207,7 +207,7 @@ export default function PerformancePage() {
 
             <div className="grid grid-cols-2 gap-3 mb-8">
               <InfoBox icon={<Truck size={16}/>} label="Véhicule" value={driver?.vehicle ?? '—'} />
-              <InfoBox icon={<Map size={16}/>} label="Région" value={driver?.region ?? '—'} />
+              <InfoBox icon={<MapIcon size={16}/>} label="Région" value={driver?.region ?? '—'} />
             </div>
 
             <button 

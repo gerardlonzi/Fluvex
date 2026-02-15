@@ -30,7 +30,6 @@ export default function FleetPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [unreadAlerts, setUnreadAlerts] = useState(0);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -56,7 +55,6 @@ export default function FleetPage() {
   useEffect(() => {
     fetch('/api/alerts?unreadOnly=true', { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : []))
-      .then((data: unknown[]) => setUnreadAlerts(data.length));
   }, []);
 
   useEffect(() => {
@@ -113,12 +111,7 @@ export default function FleetPage() {
             type="button"
             className="relative p-2.5 text-text-muted hover:bg-border rounded-xl transition-all"
           >
-            <Bell size={22} />
-            {unreadAlerts > 0 && (
-              <span className="absolute top-2 right-2 w-5 h-5 bg-red-500 text-[10px] font-bold text-white flex items-center justify-center rounded-full ">
-                {unreadAlerts}
-              </span>
-            )}
+            
           </button>
           <button type="button" onClick={handleExport} disabled={exporting} className="flex items-center gap-2 border border-border bg-surface hover:bg-border text-text-main px-4 py-2.5 rounded-xl font-bold transition-all disabled:opacity-70">
             <Download size={18} />
@@ -130,7 +123,7 @@ export default function FleetPage() {
           </Link>
         </div>
       </header>
-      <div className="p-8 space-y-6 overflow-y-auto">
+      <div className="p-8 space-y-6 ">
         {/* FILTRES & RECHERCHE FONCTIONNELS */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface p-4 rounded-2xl border border-border shadow-xl">
           <div className="relative flex-1 max-w-md">
@@ -138,7 +131,7 @@ export default function FleetPage() {
             <input 
               type="text"
               placeholder="Rechercher par nom ou ID..."
-              className="w-full bg-border/50 border border-border rounded-xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+              className="w-full bg-border/50 border bg-transparent border-border rounded-xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
