@@ -72,7 +72,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
 
   return (
     <div
-      className={`flex items-start gap-3 p-4 rounded-xl border backdrop-blur-md bg-surface/95 shadow-lg animate-in slide-in-from-right ${colors[toast.type]}`}
+      className={`flex font-sans items-start gap-3 p-4 rounded-xl border backdrop-blur-md bg-surface/95 shadow-lg animate-in slide-in-from-right ${colors[toast.type]}`}
     >
       <div className="flex-shrink-0 mt-0.5">{icons[toast.type]}</div>
       <div className="flex-1 text-sm font-medium">{toast.message}</div>

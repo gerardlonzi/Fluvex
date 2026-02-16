@@ -4,7 +4,6 @@ export const registerCompanySchema = z.object({
   companyName: z.string().min(1, "Nom requis"),
   email: z.string().email("Email invalide"),
   address: z.string().min(1, "Adresse requise"),
-  city: z.string().min(1, "Ville requise"),
   country: z.string().default("FR"),
   fleetSize: z.string().optional(),
   industry: z.string().default("logistics"),

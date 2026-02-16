@@ -4,9 +4,12 @@ import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
+import { useToast } from '@/src/components/ui/toast';
+
 
 export default function LoginPage() {
   const router = useRouter();
+  const { showToast, showError, showSuccess, showWarning, showInfo } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -34,13 +37,22 @@ export default function LoginPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error || 'Email ou mot de passe incorrect.');
+            setFieldErrors({
+              email: undefined,
+              password: undefined,              
+            });
+        if (data.error.email) {
+          setFieldErrors({ email: data.error.email });
+        }
+        if (data.error.password) {
+          setFieldErrors({ password: data.error.password });
+        }
         setLoading(false);
         return;
       }
       router.push((data.redirect as string) || '/dashboard');
     } catch {
-      setError('Erreur réseau, veuillez réessayer.');
+      showError('Erreur réseau, veuillez réessayer.');
       setLoading(false);
     }
   };
@@ -80,9 +92,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {error && (
-          <p className="text-sm text-red-500 font-medium mt-2">{error}</p>
-        )}
+        
 
         <button
           type="submit"
