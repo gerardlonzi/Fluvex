@@ -1,6 +1,7 @@
 'use client';
 
 import React, { FormEvent, useRef, useState } from 'react';
+import { useToast } from '@/src/components/ui/toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -27,7 +28,6 @@ type UploadedFile = {
   mimeType: string;
 };
 
-// Type pour les erreurs (tous les champs requis)
 type FieldErrors = {
   name?: string;
   email?: string;
@@ -41,30 +41,42 @@ type FieldErrors = {
 
 export default function NewDriverPage() {
   const router = useRouter();
-  
-  // États des champs
+  const { showError, showSuccess } = useToast();
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [birthDate, setBirthDate] = useState(''); // Ajouté
-  const [licenseNumber, setLicenseNumber] = useState(''); // Ajouté
+  const [birthDate, setBirthDate] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
   const [licenseExpiry, setLicenseExpiry] = useState('');
   const [employmentType, setEmploymentType] = useState('Temps plein');
   const [shift, setShift] = useState('Matin (06:00 - 14:00)');
   const [vehicleId, setVehicleId] = useState('');
-  
-  // États Upload
+
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
+
   const [docs, setDocs] = useState<UploadedFile[]>([]);
   const [docsUploading, setDocsUploading] = useState(false);
   const docsInputRef = useRef<HTMLInputElement | null>(null);
 
-  // États Gestion
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+
+  // Fonction pour calculer l'âge à partir de la date de naissance
+  const calculateAge = (birth: string): number => {
+    if (!birth) return 0;
+    const birthDateObj = new Date(birth);
+    const today = new Date();
+    let age = today.getFullYear() - birthDateObj.getFullYear();
+    const m = today.getMonth() - birthDateObj.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+      age--;
+    }
+    return age;
+  };
 
   const uploadToCloudinary = async (file: File, folder: string): Promise<UploadedFile> => {
     const fd = new FormData();
@@ -72,7 +84,10 @@ export default function NewDriverPage() {
     fd.append('folder', folder);
     const res = await fetch('/api/upload', { method: 'POST', body: fd, credentials: 'include' });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || 'Upload impossible');
+    if (!res.ok) {
+      showError(data.error || 'Upload impossible');
+      throw new Error(data.error || 'Upload impossible');
+    }
     return data as UploadedFile;
   };
 
@@ -81,8 +96,9 @@ export default function NewDriverPage() {
     setError(null);
     setFieldErrors({});
 
-    // VALIDATION DES CHAMPS REQUIS
     const err: FieldErrors = {};
+
+    // Validations existantes
     if (!name.trim()) err.name = 'Le nom est requis.';
     if (!email.trim()) err.email = "L'email est requis.";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) err.email = 'Email invalide.';
@@ -93,9 +109,27 @@ export default function NewDriverPage() {
     if (!avatarUrl) err.avatarUrl = 'Une photo est requise.';
     if (docs.length === 0) err.docs = 'Au moins un document est requis.';
 
+    // Nouvelle validation : Âge minimum 18 ans
+    if (birthDate) {
+      const age = calculateAge(birthDate);
+      if (age < 18) {
+        err.birthDate = 'Le chauffeur doit avoir au moins 18 ans.';
+      }
+    }
+
+    // Nouvelle validation : Date d'expiration du permis > aujourd'hui
+    if (licenseExpiry) {
+      const expiryDate = new Date(licenseExpiry);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Ignorer l'heure pour comparaison juste
+      if (expiryDate <= today) {
+        err.licenseExpiry = 'Le permis doit être valide (expiration future).';
+      }
+    }
+
     if (Object.keys(err).length > 0) {
       setFieldErrors(err);
-      setError("Veuillez remplir tous les champs obligatoires et ajouter les documents.");
+      setError("Veuillez corriger les erreurs indiquées.");
       return;
     }
 
@@ -122,12 +156,16 @@ export default function NewDriverPage() {
 
       if (!res.ok) {
         const data = await res.json();
+        showError(data.error || 'Erreur lors de la création.');
         throw new Error(data.error || 'Erreur lors de la création.');
       }
 
+      showSuccess("Chauffeur ajouté avec succès");
       router.push('/dashboard/fleet');
     } catch (err: any) {
+      showError(err.message);
       setError(err.message);
+    } finally {
       setSubmitting(false);
     }
   };
@@ -229,7 +267,7 @@ export default function NewDriverPage() {
                   {/* Inputs */}
                   <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="col-span-2 md:col-span-1">
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">Nom légal complet</label>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">Nom légal complet <span className="text-red-400">*</span></label>
                       <input
                         className={`w-full bg-slate-50 dark:bg-background border rounded-lg px-4 py-2.5 text-slate-900 dark:text-text-main outline-none focus:ring-1 focus:ring-primary ${fieldErrors.name ? 'border-red-500' : 'border-slate-200 dark:border-border'}`}
                         type="text"
@@ -237,18 +275,20 @@ export default function NewDriverPage() {
                         onChange={(e) => { setName(e.target.value); setFieldErrors(p => ({...p, name: undefined})); }}
                         placeholder="ex. Jonathan Doe"
                       />
+                      {fieldErrors.name && <p className="mt-1 text-xs text-red-500">{fieldErrors.name}</p>}
                     </div>
                     <div className="col-span-2 md:col-span-1">
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">Date de naissance</label>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">Date de naissance <span className="text-red-400">*</span></label>
                       <input 
                         className={`w-full bg-slate-50 dark:bg-background border rounded-lg px-4 py-2.5 text-slate-900 dark:text-text-main outline-none focus:ring-1 focus:ring-primary ${fieldErrors.birthDate ? 'border-red-500' : 'border-slate-200 dark:border-border'}`}
                         type="date" 
                         value={birthDate}
                         onChange={(e) => { setBirthDate(e.target.value); setFieldErrors(p => ({...p, birthDate: undefined})); }}
                       />
+                      {fieldErrors.birthDate && <p className="mt-1 text-xs text-red-500">{fieldErrors.birthDate}</p>}
                     </div>
                     <div className="col-span-2 md:col-span-1">
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">Adresse e-mail</label>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">Adresse e-mail <span className="text-red-400">*</span></label>
                       <input
                         className={`w-full bg-slate-50 dark:bg-background border rounded-lg px-4 py-2.5 text-slate-900 dark:text-text-main outline-none focus:ring-1 focus:ring-primary ${fieldErrors.email ? 'border-red-500' : 'border-slate-200 dark:border-border'}`}
                         type="email"
@@ -256,9 +296,10 @@ export default function NewDriverPage() {
                         onChange={(e) => { setEmail(e.target.value); setFieldErrors(p => ({...p, email: undefined})); }}
                         placeholder="john@fluvex.com"
                       />
+                      {fieldErrors.email && <p className="mt-1 text-xs text-red-500">{fieldErrors.email}</p>}
                     </div>
                     <div className="col-span-2 md:col-span-1">
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">Numéro de téléphone</label>
+                      <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">Numéro de téléphone <span className="text-red-400">*</span></label>
                       <input
                         className={`w-full bg-slate-50 dark:bg-background border rounded-lg px-4 py-2.5 text-slate-900 dark:text-text-main outline-none focus:ring-1 focus:ring-primary ${fieldErrors.phone ? 'border-red-500' : 'border-slate-200 dark:border-border'}`}
                         type="tel"
@@ -266,13 +307,14 @@ export default function NewDriverPage() {
                         onChange={(e) => { setPhone(e.target.value); setFieldErrors(p => ({...p, phone: undefined})); }}
                         placeholder="+33 6 12 34 56 78"
                       />
+                      {fieldErrors.phone && <p className="mt-1 text-xs text-red-500">{fieldErrors.phone}</p>}
                     </div>
                   </div>
                 </div>
 
                 <div className="pt-6 border-t border-slate-100 dark:border-border grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">Numéro de permis</label>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">Numéro de permis <span className="text-red-400">*</span></label>
                     <div className="relative">
                       <IdCard className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
                       <input 
@@ -282,21 +324,23 @@ export default function NewDriverPage() {
                         value={licenseNumber}
                         onChange={(e) => { setLicenseNumber(e.target.value); setFieldErrors(p => ({...p, licenseNumber: undefined})); }}
                       />
+                      {fieldErrors.licenseNumber && <p className="mt-1 text-xs text-red-500">{fieldErrors.licenseNumber}</p>}
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">Expiration du permis</label>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">Expiration du permis <span className="text-red-400">*</span></label>
                     <input
                       className={`w-full bg-slate-50 dark:bg-background border rounded-lg px-4 py-2.5 text-slate-900 dark:text-text-main outline-none focus:ring-1 focus:ring-primary ${fieldErrors.licenseExpiry ? 'border-red-500' : 'border-slate-200 dark:border-border'}`}
                       type="date"
                       value={licenseExpiry}
                       onChange={(e) => { setLicenseExpiry(e.target.value); setFieldErrors(p => ({...p, licenseExpiry: undefined})); }}
                     />
+                    {fieldErrors.licenseExpiry && <p className="mt-1 text-xs text-red-500">{fieldErrors.licenseExpiry}</p>}
                   </div>
                 </div>
               </section>
 
-              {/* Work Preferences */}
+              {/* Work Preferences (inchangé) */}
               <section className="bg-white dark:bg-surface rounded-xl border border-slate-200 dark:border-border shadow-sm p-6">
                 <h2 className="text-lg font-bold text-slate-900 dark:text-text-main flex items-center gap-2 mb-6">
                   <Briefcase className="w-5 h-5 text-primary" />
@@ -346,9 +390,8 @@ export default function NewDriverPage() {
               </section>
             </div>
 
-            {/* Right Column */}
+            {/* Right Column (inchangé) */}
             <div className="space-y-6">
-              
               <section className="bg-white dark:bg-surface rounded-xl border border-slate-200 dark:border-border shadow-sm p-6">
                 <h2 className="text-lg font-bold text-slate-900 dark:text-text-main flex items-center gap-2 mb-6">
                   <Truck className="w-5 h-5 text-primary" />
@@ -382,7 +425,7 @@ export default function NewDriverPage() {
               <section className="bg-white dark:bg-surface rounded-xl border border-slate-200 dark:border-border shadow-sm p-6">
                 <h2 className="text-lg font-bold text-slate-900 dark:text-text-main flex items-center gap-2 mb-4">
                   <FolderOpen className="w-5 h-5 text-primary" />
-                  Docs de conformité
+                  Docs de conformité <span className="text-red-400">*</span>
                 </h2>
                 <p className="text-xs text-slate-500 mb-4">PDF ou JPG valides. Max 5 Mo.</p>
                 

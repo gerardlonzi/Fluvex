@@ -58,6 +58,8 @@ export default function DeliveryDashboard() {
     fetch('/api/deliveries', { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : []))
       .then((data: Array<{ id: string; trackingId: string; status: string; amount: unknown; currency: string; driver: { name: string } | null; deliveryAddress?: string; recipientCompany?: string }>) => {
+       console.log(data);
+       
         setDeliveries(
           data.map((d) => ({
             id: d.id,
@@ -321,7 +323,7 @@ export default function DeliveryDashboard() {
             className="absolute inset-0 bg-background/60 backdrop-blur-sm z-30 transition-opacity duration-300"
             onClick={() => setSelectedDelivery(null)}
           />
-          <aside className="absolute top-0 right-0 h-full w-full max-w-[500px] bg-surface shadow-2xl z-40 border-l border-border transform transition-transform duration-300 animate-in slide-in-from-right flex flex-col">
+          <aside className="fixed top-0 right-0 h-full w-full max-w-[500px] bg-surface shadow-2xl z-40 border-l border-border transform transition-transform duration-300 animate-in slide-in-from-right flex flex-col">
             
             {/* DRAWER HEADER */}
             <div className="flex flex-col gap-4 p-6 border-b border-border bg-surface">

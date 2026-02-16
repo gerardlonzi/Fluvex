@@ -11,11 +11,10 @@ import {
 import { useToast } from '@/src/components/ui/toast';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-type PlaceResult = { id: string; place_name: string; center: [number, number] };
 
+type PlaceResult = { id: string; place_name: string; center: [number, number] };
 type Driver = { id: string; name: string; code: string };
 type Vehicle = { id: string; name: string; plateNumber: string | null };
-
 type UploadedFile = {
   url: string;
   publicId: string;
@@ -24,9 +23,27 @@ type UploadedFile = {
   mimeType: string;
 };
 
+type FieldErrors = {
+  companyName?: string;
+  contactName?: string;
+  phoneNumber?: string;
+  deliveryAddress?: string;
+  weight?: string;
+  length?: string;
+  width?: string;
+  height?: string;
+  packageType?: string;
+  scheduledDate?: string;
+  scheduledTime?: string;
+  amount?: string;
+  driverId?: string;
+  vehicleId?: string;
+};
+
 export default function CreateLivraison() {
   const router = useRouter();
   const { showError, showSuccess } = useToast();
+
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [driverId, setDriverId] = useState('');
@@ -37,7 +54,7 @@ export default function CreateLivraison() {
   const [uploadingProofs, setUploadingProofs] = useState(false);
   const proofsInputRef = useRef<HTMLInputElement | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  
+
   // Champs requis
   const [companyName, setCompanyName] = useState('');
   const [contactName, setContactName] = useState('');
@@ -53,6 +70,9 @@ export default function CreateLivraison() {
   const [addressSuggestions, setAddressSuggestions] = useState<PlaceResult[]>([]);
   const [addressSearching, setAddressSearching] = useState(false);
   const addressSuggestionsRef = useRef<HTMLDivElement | null>(null);
+
+  // Erreurs par champ
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   useEffect(() => {
     Promise.all([
@@ -96,33 +116,55 @@ export default function CreateLivraison() {
     return data as UploadedFile;
   };
 
-  const validateForm = (): string | null => {
-    if (!companyName.trim()) return 'Le nom de l\'entreprise est requis';
-    if (!contactName.trim()) return 'Le nom du contact est requis';
-    if (!phoneNumber.trim()) return 'Le numéro de téléphone est requis';
-    if (!deliveryAddress.trim()) return 'L\'adresse de livraison est requise';
-    if (!weight.trim() || Number(weight) <= 0) return 'Le poids est requis et doit être supérieur à 0';
-    if (!length.trim() || Number(length) <= 0) return 'La longueur est requise';
-    if (!width.trim() || Number(width) <= 0) return 'La largeur est requise';
-    if (!height.trim() || Number(height) <= 0) return 'La hauteur est requise';
-    if (!packageType.trim()) return 'Le type de colis est requis';
-    if (!scheduledDate.trim()) return 'La date de livraison est requise';
-    if (!scheduledTime.trim()) return 'L\'heure de livraison est requise';
-    if (!amount.trim() || Number(amount) <= 0) return 'Le prix de livraison est requis';
-    if (!driverId.trim()) return 'Un chauffeur doit être sélectionné';
-    if (!vehicleId.trim()) return 'Un véhicule doit être sélectionné';
-    return null;
+  const validateForm = (): FieldErrors => {
+    const errors: FieldErrors = {};
+
+    if (!companyName.trim()) errors.companyName = 'Le nom de l\'entreprise est requis';
+    if (!contactName.trim()) errors.contactName = 'Le nom du contact est requis';
+    if (!phoneNumber.trim()) errors.phoneNumber = 'Le numéro de téléphone est requis';
+    if (!deliveryAddress.trim()) errors.deliveryAddress = 'L\'adresse de livraison est requise';
+
+    if (!weight.trim() || Number(weight) <= 0) errors.weight = 'Le poids est requis et doit être supérieur à 0';
+    if (!length.trim() || Number(length) <= 0) errors.length = 'La longueur est requise';
+    if (!width.trim() || Number(width) <= 0) errors.width = 'La largeur est requise';
+    if (!height.trim() || Number(height) <= 0) errors.height = 'La hauteur est requise';
+
+    if (!packageType.trim()) errors.packageType = 'Le type de colis est requis';
+
+    if (!scheduledDate.trim()) {
+      errors.scheduledDate = 'La date de livraison est requise';
+    } else {
+      const selectedDate = new Date(scheduledDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (selectedDate < today) {
+        errors.scheduledDate = 'La date de livraison ne peut pas être dans le passé';
+      }
+    }
+
+    if (!scheduledTime.trim()) errors.scheduledTime = 'L\'heure de livraison est requise';
+
+    if (!amount.trim() || Number(amount) <= 0) errors.amount = 'Le prix de livraison est requis';
+
+    if (!driverId.trim()) errors.driverId = 'Un chauffeur doit être sélectionné';
+    if (!vehicleId.trim()) errors.vehicleId = 'Un véhicule doit être sélectionné';
+
+    return errors;
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const validationError = validateForm();
-    if (validationError) {
-      showError(validationError);
+
+    const errors = validateForm();
+    setFieldErrors(errors);
+
+    // S'il y a des erreurs locales → on arrête (pas de toast pour ça)
+    if (Object.keys(errors).length > 0) {
       return;
     }
-    
+
     setSubmitting(true);
+
     try {
       const res = await fetch('/api/deliveries', {
         method: 'POST',
@@ -145,16 +187,19 @@ export default function CreateLivraison() {
           scheduledTime: scheduledTime,
         }),
       });
+
       const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
         showError(data.error || 'Impossible de créer la livraison.');
-        setSubmitting(false);
         return;
       }
+
       showSuccess('Livraison créée avec succès !');
       router.push('/dashboard/deliveries');
-    } catch {
+    } catch (err) {
       showError('Erreur réseau.');
+    } finally {
       setSubmitting(false);
     }
   };
@@ -192,9 +237,10 @@ export default function CreateLivraison() {
                     type="text" 
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
-                    className="w-full bg-[#020617] border border-[#1e293b] rounded-xl text-[#f8fafc] focus:ring-2 focus:ring-[#13ec5b] focus:border-transparent transition-all p-3" 
+                    className={`w-full bg-[#020617] border ${fieldErrors.companyName ? 'border-red-400' : 'border-[#1e293b]'} rounded-xl text-[#f8fafc] focus:ring-2 focus:ring-[#13ec5b] focus:border-transparent transition-all p-3`} 
                     placeholder="ex: Acme Corp" 
                   />
+                  {fieldErrors.companyName && <p className="text-xs text-red-400 mt-1">{fieldErrors.companyName}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#94a3b8] mb-2">Nom du contact <span className="text-red-400">*</span></label>
@@ -202,9 +248,10 @@ export default function CreateLivraison() {
                     type="text" 
                     value={contactName}
                     onChange={(e) => setContactName(e.target.value)}
-                    className="w-full bg-[#020617] border border-[#1e293b] rounded-xl text-[#f8fafc] focus:ring-2 focus:ring-[#13ec5b] p-3" 
+                    className={`w-full bg-[#020617] border ${fieldErrors.contactName ? 'border-red-400' : 'border-[#1e293b]'} rounded-xl text-[#f8fafc] focus:ring-2 focus:ring-[#13ec5b] p-3`} 
                     placeholder="Jane Doe" 
                   />
+                  {fieldErrors.contactName && <p className="text-xs text-red-400 mt-1">{fieldErrors.contactName}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#94a3b8] mb-2">Numéro de téléphone <span className="text-red-400">*</span></label>
@@ -212,9 +259,10 @@ export default function CreateLivraison() {
                     type="tel" 
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="w-full bg-[#020617] border border-[#1e293b] rounded-xl text-[#f8fafc] focus:ring-2 focus:ring-[#13ec5b] p-3" 
+                    className={`w-full bg-[#020617] border ${fieldErrors.phoneNumber ? 'border-red-400' : 'border-[#1e293b]'} rounded-xl text-[#f8fafc] focus:ring-2 focus:ring-[#13ec5b] p-3`} 
                     placeholder="+33 6 00 00 00 00" 
                   />
+                  {fieldErrors.phoneNumber && <p className="text-xs text-red-400 mt-1">{fieldErrors.phoneNumber}</p>}
                 </div>
                 <div className="col-span-2 relative">
                   <label className="block text-sm font-medium text-[#94a3b8] mb-2">Adresse de livraison <span className="text-red-400">*</span></label>
@@ -224,12 +272,13 @@ export default function CreateLivraison() {
                       type="text" 
                       value={deliveryAddress}
                       onChange={(e) => setDeliveryAddress(e.target.value)}
-                      className="w-full bg-[#020617] border border-[#1e293b] rounded-xl text-[#f8fafc] pl-11 p-3 focus:ring-2 focus:ring-[#13ec5b]" 
+                      className={`w-full bg-[#020617] border ${fieldErrors.deliveryAddress ? 'border-red-400' : 'border-[#1e293b]'} rounded-xl text-[#f8fafc] pl-11 p-3 focus:ring-2 focus:ring-[#13ec5b]`} 
                       placeholder="Commencez à taper une adresse..." 
                       autoComplete="off"
                     />
                     {addressSearching && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#94a3b8]">Recherche…</span>}
                   </div>
+                  {fieldErrors.deliveryAddress && <p className="text-xs text-red-400 mt-1">{fieldErrors.deliveryAddress}</p>}
                   {addressSuggestions.length > 0 && (
                     <div ref={addressSuggestionsRef} className="absolute top-full left-0 right-0 mt-1 rounded-xl border border-[#1e293b] bg-[#0f172a] shadow-xl z-50 overflow-hidden">
                       {addressSuggestions.map((r) => (
@@ -248,7 +297,7 @@ export default function CreateLivraison() {
                     </div>
                   )}
                   {!MAPBOX_TOKEN && (
-                    <p className="text-xs text-amber-500 mt-1">Configurez NEXT_PUBLIC_MAPBOX_TOKEN pour activer la recherche d&apos;adresse.</p>
+                    <p className="text-xs text-amber-500 mt-1">Configurez NEXT_PUBLIC_MAPBOX_TOKEN pour activer la recherche d'adresse.</p>
                   )}
                 </div>
               </div>
@@ -274,38 +323,48 @@ export default function CreateLivraison() {
                       step={0.1}
                       value={weight}
                       onChange={(e) => setWeight(e.target.value)}
-                      className="w-full bg-[#020617] border-[#1e293b] rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]" 
+                      className={`w-full bg-[#020617] border ${fieldErrors.weight ? 'border-red-400' : 'border-[#1e293b]'} rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]`} 
                       placeholder="0.0" 
                     />
                   </div>
+                  {fieldErrors.weight && <p className="text-xs text-red-400 mt-1">{fieldErrors.weight}</p>}
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-[#94a3b8] mb-2">Dimensions (cm) <span className="text-red-400">*</span></label>
                   <div className="flex gap-2">
+                    <div>
                     <input 
                       type="number" 
                       min={1}
                       value={length}
                       onChange={(e) => setLength(e.target.value)}
-                      className="w-full bg-[#020617] border border-[#1e293b] rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]" 
+                      className={`w-full bg-[#020617] border ${fieldErrors.length ? 'border-red-400' : 'border-[#1e293b]'} rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]`} 
                       placeholder="L" 
                     />
+                    {fieldErrors.length && <p className="text-xs text-red-400 mt-1">{fieldErrors.length}</p>}
+                    </div>
+                    <div>
                     <input 
                       type="number" 
                       min={1}
                       value={width}
                       onChange={(e) => setWidth(e.target.value)}
-                      className="w-full bg-[#020617] border border-[#1e293b] rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]" 
+                      className={`w-full bg-[#020617] border ${fieldErrors.width ? 'border-red-400' : 'border-[#1e293b]'} rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]`} 
                       placeholder="l" 
                     />
+                    {fieldErrors.width && <p className="text-xs text-red-400 mt-1">{fieldErrors.width}</p>}
+                    </div>
+                    <div>
                     <input 
                       type="number" 
                       min={1}
                       value={height}
                       onChange={(e) => setHeight(e.target.value)}
-                      className="w-full bg-[#020617] border border-[#1e293b] rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]" 
+                      className={`w-full bg-[#020617] border ${fieldErrors.height ? 'border-red-400' : 'border-[#1e293b]'} rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]`} 
                       placeholder="H" 
                     />
+                    {fieldErrors.height && <p className="text-xs text-red-400 mt-1">{fieldErrors.height}</p>}
+                    </div>
                   </div>
                 </div>
                 <div className="md:col-span-3">
@@ -313,13 +372,14 @@ export default function CreateLivraison() {
                   <select 
                     value={packageType}
                     onChange={(e) => setPackageType(e.target.value)}
-                    className="w-full bg-[#020617] border-[#1e293b] rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b] appearance-none"
+                    className={`w-full bg-[#020617] border ${fieldErrors.packageType ? 'border-red-400' : 'border-[#1e293b]'} rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b] appearance-none`}
                   >
                     <option value="">Sélectionner un type</option>
                     <option value="STANDARD">Boîte Standard</option>
                     <option value="FRAGILE">Fragile / Verre</option>
                     <option value="REFRIGERATED">Réfrigéré</option>
                   </select>
+                  {fieldErrors.packageType && <p className="text-xs text-red-400 mt-1">{fieldErrors.packageType}</p>}
                 </div>
               </div>
             </section>
@@ -356,8 +416,9 @@ export default function CreateLivraison() {
               )}
 
               <div>
+                <label className="block text-sm font-medium text-[#94a3b8] mb-2">Chauffeur <span className="text-red-400">*</span></label>
                 <select
-                  className="w-full bg-[#020617] border border-[#1e293b] rounded-xl text-[#f8fafc] p-4 focus:ring-2 focus:ring-[#13ec5b]"
+                  className={`w-full bg-[#020617] border ${fieldErrors.driverId ? 'border-red-400' : 'border-[#1e293b]'} rounded-xl text-[#f8fafc] p-4 focus:ring-2 focus:ring-[#13ec5b]`}
                   value={driverId}
                   onChange={(e) => setDriverId(e.target.value)}
                 >
@@ -370,10 +431,12 @@ export default function CreateLivraison() {
                     ))
                   )}
                 </select>
+                {fieldErrors.driverId && <p className="text-xs text-red-400 mt-1">{fieldErrors.driverId}</p>}
                 {drivers.length === 0 && (
                   <p className="text-xs text-[#94a3b8] mt-1">Aucun chauffeur. Ajoutez-en dans Performance / Flotte.</p>
                 )}
               </div>
+
               <div className="mt-4">
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <span className="text-sm text-[#94a3b8]">Véhicule</span>
@@ -382,7 +445,7 @@ export default function CreateLivraison() {
                   </Link>
                 </div>
                 <select
-                  className="w-full bg-[#020617] border border-[#1e293b] rounded-xl text-[#f8fafc] p-4 focus:ring-2 focus:ring-[#13ec5b]"
+                  className={`w-full bg-[#020617] border ${fieldErrors.vehicleId ? 'border-red-400' : 'border-[#1e293b]'} rounded-xl text-[#f8fafc] p-4 focus:ring-2 focus:ring-[#13ec5b]`}
                   value={vehicleId}
                   onChange={(e) => setVehicleId(e.target.value)}
                 >
@@ -395,6 +458,7 @@ export default function CreateLivraison() {
                     ))
                   )}
                 </select>
+                {fieldErrors.vehicleId && <p className="text-xs text-red-400 mt-1">{fieldErrors.vehicleId}</p>}
                 {vehicles.length === 0 && (
                   <p className="text-xs text-[#94a3b8] mt-1">Aucun véhicule. Cliquez sur &quot;Ajouter un véhicule&quot; ci-dessus.</p>
                 )}
@@ -443,15 +507,16 @@ export default function CreateLivraison() {
                     type="date" 
                     value={scheduledDate}
                     onChange={(e) => setScheduledDate(e.target.value)}
-                    className="w-full bg-[#020617] border-[#1e293b] rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]" 
+                    className={`w-full bg-[#020617] border ${fieldErrors.scheduledDate ? 'border-red-400' : 'border-[#1e293b]'} rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]`} 
                   />
+                  {fieldErrors.scheduledDate && <p className="text-xs text-red-400 mt-1">{fieldErrors.scheduledDate}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#94a3b8] mb-2">Heure de livraison <span className="text-red-400">*</span></label>
                   <select 
                     value={scheduledTime}
                     onChange={(e) => setScheduledTime(e.target.value)}
-                    className="w-full bg-[#020617] border-[#1e293b] rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]"
+                    className={`w-full bg-[#020617] border ${fieldErrors.scheduledTime ? 'border-red-400' : 'border-[#1e293b]'} rounded-xl text-[#f8fafc] p-3 focus:ring-2 focus:ring-[#13ec5b]`}
                   >
                     <option value="">Sélectionner une heure</option>
                     <option value="09:00-12:00">09:00 - 12:00</option>
@@ -459,6 +524,7 @@ export default function CreateLivraison() {
                     <option value="15:00-18:00">15:00 - 18:00</option>
                     <option value="ANYTIME">N'importe quand</option>
                   </select>
+                  {fieldErrors.scheduledTime && <p className="text-xs text-red-400 mt-1">{fieldErrors.scheduledTime}</p>}
                 </div>
               </div>
             </section>

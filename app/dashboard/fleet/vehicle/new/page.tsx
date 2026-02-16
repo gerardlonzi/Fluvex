@@ -4,6 +4,7 @@ import React, { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Save, Truck, ArrowLeft } from 'lucide-react';
+import { useToast } from '@/src/components/ui/toast';
 
 export default function NewVehiclePage() {
   const router = useRouter();
@@ -11,7 +12,8 @@ export default function NewVehiclePage() {
   const [plateNumber, setPlateNumber] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{ name?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string, plateNumber?:string }>({});
+  const {showError,showSuccess} = useToast()
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -19,6 +21,10 @@ export default function NewVehiclePage() {
     setFieldErrors({});
     if (!name.trim()) {
       setFieldErrors({ name: 'Le nom du véhicule est requis.' });
+      return;
+    }
+    if (!plateNumber.trim()) {
+      setFieldErrors({ plateNumber: 'numero de plaque est requis.' });
       return;
     }
     setSubmitting(true);
@@ -34,12 +40,15 @@ export default function NewVehiclePage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        showError(data.error || 'Impossible de créer le véhicule.')
         setError(data.error || 'Impossible de créer le véhicule.');
         setSubmitting(false);
         return;
       }
+      showSuccess("véhicule ajouté avec success")
       router.push('/dashboard/fleet');
     } catch {
+      showError('Erreur réseau, veuillez réessayer.')
       setError('Erreur réseau, veuillez réessayer.');
       setSubmitting(false);
     }
@@ -49,13 +58,6 @@ export default function NewVehiclePage() {
     <div className="bg-background text-text-main min-h-screen">
       <main className="max-w-2xl mx-auto py-8 px-4">
         <header className="mb-8">
-          <Link
-            href="/dashboard/fleet"
-            className="inline-flex items-center gap-2 text-text-muted hover:text-text-main mb-4"
-          >
-            <ArrowLeft size={18} />
-            Retour à la flotte
-          </Link>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <Truck className="w-8 h-8 text-primary" />
             Ajouter un véhicule
@@ -94,6 +96,8 @@ export default function NewVehiclePage() {
               placeholder="ex. AB-123-CD"
               className="w-full bg-background border border-border rounded-xl px-4 py-3 text-text-main focus:ring-2 focus:ring-primary outline-none"
             />
+            {fieldErrors.plateNumber && <p className="text-sm text-red-500 mt-1">{fieldErrors.plateNumber}</p>}
+
           </div>
           <div className="flex gap-3 pt-4">
             <Link
