@@ -42,13 +42,12 @@ export default function Home() {
             rel="noopener noreferrer"
           >
             <Image
-              className="dark:invert"
+              className="dark:invert invert"
               src="/vercel.svg"
-alt="Vercel logomark"
-            width={16}
-            height={16}
-            className="invert"
-          />
+              alt="Vercel logomark"
+              width={16}
+              height={16}
+            />
           Deploy Now
         </a>
           <a
