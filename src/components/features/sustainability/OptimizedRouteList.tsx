@@ -1,58 +1,156 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import { Truck, Zap, ArrowRight } from 'lucide-react';
 
-const topRoutes = [
-  { id: 'A-12', type: 'diesel', from: 'Paris Nord', to: 'Lille Hub', co2: '124 kg', dist: '215 km', badge: 'Excellent', score: 'bg-primary' },
-  { id: 'B-09', type: 'diesel', from: 'Lyon Centre', to: 'Marseille', co2: '98 kg', dist: '280 km', badge: 'Bon', score: 'bg-emerald-600' },
-  { id: 'E-22', type: 'electric', from: 'Bordeaux', to: 'Nantes', co2: '100%', dist: 'Utilisé 65%', badge: 'Zéro Émission', score: 'bg-primary' },
-];
+type Company = { name?: string; address?: string; city?: string; country?: string };
+type DeliveryApi = {
+  id: string;
+  trackingId: string;
+  deliveryAddress?: string | null;
+  recipientCompany?: string | null;
+  routes?: { origin?: string | null; destination?: string | null; distanceKm?: number | null; score?: number | null }[];
+};
+
+type RouteItem = {
+  id: string;
+  type: 'diesel' | 'electric';
+  from: string;
+  to: string;
+  co2: string;
+  dist: string;
+  badge: string;
+  score: string;
+};
+
+function scoreToBadge(score: number | null | undefined): string {
+  if (score == null) return 'Standard';
+  if (score >= 85) return 'Excellent';
+  if (score >= 70) return 'Bon';
+  if (score >= 50) return 'Standard';
+  return 'À améliorer';
+}
 
 export function OptimizedRouteList() {
+  const [routes, setRoutes] = useState<RouteItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const [companyRes, deliveriesRes] = await Promise.all([
+          fetch('/api/company', { credentials: 'include' }),
+          fetch('/api/deliveries', { credentials: 'include' }),
+        ]);
+
+        const company: Company = companyRes.ok ? await companyRes.json() : null;
+        const deliveries: DeliveryApi[] = deliveriesRes.ok ? await deliveriesRes.json() : [];
+
+        const fromLabel = company?.name?.trim() || company?.address?.trim() || 'Siège';
+        const built: RouteItem[] = [];
+
+        for (const d of deliveries || []) {
+          const toLabel =
+            d.deliveryAddress?.trim() ||
+            d.recipientCompany?.trim() ||
+            `Livraison ${d.trackingId}`;
+          const route = d.routes?.[0];
+          const score = route?.score ?? null;
+          const distKm = route?.distanceKm ?? null;
+          const badge = scoreToBadge(score);
+          built.push({
+            id: d.trackingId,
+            type: 'diesel',
+            from: fromLabel,
+            to: toLabel,
+            co2: score != null ? `Score ${score}` : '—',
+            dist: distKm != null ? `${Math.round(distKm)} km` : '—',
+            badge,
+            score: score != null && score >= 80 ? 'bg-primary' : score != null && score >= 50 ? 'bg-emerald-600' : 'bg-amber-500/20',
+          });
+        }
+
+        // Trier par score décroissant (si disponible), sinon par ordre récent
+        built.sort((a, b) => {
+          const aScore = deliveries.find((d) => d.trackingId === a.id)?.routes?.[0]?.score ?? 0;
+          const bScore = deliveries.find((d) => d.trackingId === b.id)?.routes?.[0]?.score ?? 0;
+          return (bScore ?? 0) - (aScore ?? 0);
+        });
+
+        if (!cancelled) {
+          setRoutes(built.slice(0, 15));
+        }
+      } catch {
+        if (!cancelled) setRoutes([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="flex flex-col gap-4 h-full">
       <div className="px-1">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Top Routes</h2>
-        <p className="text-sm text-text-muted">Plus grosses économies de CO2 cette semaine.</p>
+        <p className="text-sm text-text-muted">
+          Routes basées sur le hub et les lieux de livraison.
+        </p>
       </div>
 
       <div className="flex flex-col gap-3 overflow-y-auto pr-1 custom-scrollbar">
-        {topRoutes.map((route, idx) => (
-          <div key={idx} className="p-4 rounded-xl bg-surface border border-border hover:border-primary/50 transition-all cursor-pointer group">
-            
-            {/* Header Card */}
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-md bg-slate-100 dark:bg-slate-800 text-text-muted">
-                  {route.type === 'electric' ? <Zap className="w-4 h-4" /> : <Truck className="w-4 h-4" />}
+        {loading ? (
+          <p className="text-sm text-text-muted py-4">Chargement des routes…</p>
+        ) : routes.length === 0 ? (
+          <p className="text-sm text-text-muted py-4">Aucune livraison avec destination. Les top routes apparaîtront ici.</p>
+        ) : (
+          routes.map((route) => (
+            <div
+              key={route.id}
+              className="p-4 rounded-xl bg-surface border border-border hover:border-primary/50 transition-all cursor-pointer group"
+            >
+              <div className="flex justify-between items-start mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-md bg-slate-100 dark:bg-slate-800 text-text-muted">
+                    {route.type === 'electric' ? <Zap className="w-4 h-4" /> : <Truck className="w-4 h-4" />}
+                  </div>
+                  <span className="font-bold text-slate-900 dark:text-white text-sm">
+                    {route.id}
+                  </span>
                 </div>
-                <span className="font-bold text-slate-900 dark:text-white text-sm">Route {route.id}</span>
+                <span className={`text-[10px] font-bold px-2 py-1 rounded ${route.score} text-primary`}>
+                  {route.badge}
+                </span>
               </div>
-              <span className={`text-[10px] font-bold px-2 py-1 rounded bg-primary/10 text-primary`}>
-                {route.badge}
-              </span>
-            </div>
 
-            {/* Path */}
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs text-text-muted">{route.from}</span>
-              <ArrowRight className="w-3 h-3 text-slate-600" />
-              <span className="text-xs text-text-muted">{route.to}</span>
-            </div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs text-text-muted truncate max-w-[120px]" title={route.from}>
+                  {route.from}
+                </span>
+                <ArrowRight className="w-3 h-3 text-slate-600 shrink-0" />
+                <span className="text-xs text-text-muted truncate max-w-[120px]" title={route.to}>
+                  {route.to}
+                </span>
+              </div>
 
-            {/* Stats Mini Grid */}
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              <div className="bg-background p-2 rounded-lg">
-                <p className="text-[10px] text-text-muted uppercase font-bold">Éco CO2</p>
-                <p className="text-sm font-bold text-slate-900 dark:text-white">{route.co2}</p>
-              </div>
-              <div className="bg-background p-2 rounded-lg">
-                <p className="text-[10px] text-text-muted uppercase font-bold">
-                    {route.type === 'electric' ? 'Batterie' : 'Distance'}
-                </p>
-                <p className="text-sm font-bold text-slate-900 dark:text-white">{route.dist}</p>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <div className="bg-background p-2 rounded-lg">
+                  <p className="text-[10px] text-text-muted uppercase font-bold">Éco / Score</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">{route.co2}</p>
+                </div>
+                <div className="bg-background p-2 rounded-lg">
+                  <p className="text-[10px] text-text-muted uppercase font-bold">Distance</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">{route.dist}</p>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
