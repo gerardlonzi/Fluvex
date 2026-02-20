@@ -53,7 +53,19 @@ export async function PATCH(
       ...(parsed.data.avatarUrl !== undefined && { avatarUrl: parsed.data.avatarUrl }),
       ...(parsed.data.vehicleId !== undefined && { vehicleId: parsed.data.vehicleId }),
     },
+    include: { vehicle: true },
   });
+
+  await prisma.alert.create({
+    data: {
+      companyId: session.companyId,
+      type:'UPDATE',
+      title: 'chauffeur mise a jour',
+      description: `les information du Chauffeur ${driver.code} a été mis a jour .`,
+      driverId: driver.id,
+    },
+  });
+
   return NextResponse.json(driver);
 }
 
@@ -71,5 +83,16 @@ export async function DELETE(
     return NextResponse.json({ error: "Chauffeur introuvable" }, { status: 404 });
   }
   await prisma.driver.delete({ where: { id } });
+
+  await prisma.alert.create({
+    data: {
+      companyId: session.companyId,
+      type:'DELETE',
+      title: "suppression d'un chauffeur",
+      description: `Le Chauffeur ${existing.code} et tous les informations le concernant  ont été supprimé.`,
+      driverId: existing.id,
+    },
+  });
+
   return NextResponse.json({ ok: true });
 }
