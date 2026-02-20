@@ -33,6 +33,16 @@ export async function POST(request: Request) {
         status: parsed.data.status,
       },
     });
+    await prisma.alert.create({
+      data: {
+        companyId: session.companyId,
+        type:'NEW',
+        title: 'Véhicule creér',
+        description: `Le véhicule ${vehicle.name} a été creér.`,
+        vehicleId: vehicle.id,
+      },
+    });
+
     return NextResponse.json(vehicle);
   } catch (e) {
     console.error("Create vehicle error:", e);
