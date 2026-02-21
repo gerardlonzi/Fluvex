@@ -57,21 +57,34 @@ export async function POST(request: Request) {
     while (await prisma.delivery.findFirst({ where: { trackingId } })) {
       trackingId = nextTrackingId();
     }
-    const delivery = await prisma.delivery.create({
-      data: {
-        companyId: session.companyId,
-        trackingId,
-        status: parsed.data.status,
-        amount: parsed.data.amount ?? null,
-        currency: parsed.data.currency,
-        driverId: parsed.data.driverId ?? null,
-        vehicleId: parsed.data.vehicleId ?? null,
-      },
-    });
+    let scheduledAt: Date | null = null;
+    if (parsed.data.scheduledAt) {
+      const d = new Date(parsed.data.scheduledAt);
+      if (!Number.isNaN(d.getTime())) scheduledAt = d;
+    } else if (parsed.data.scheduledDate && parsed.data.scheduledTime) {
+      const d = new Date(`${parsed.data.scheduledDate}T${parsed.data.scheduledTime}`);
+      if (!Number.isNaN(d.getTime())) scheduledAt = d;
+    }
+    const createData = {
+      companyId: session.companyId,
+      trackingId,
+      status: parsed.data.status,
+      amount: parsed.data.amount ?? null,
+      currency: parsed.data.currency,
+      driverId: parsed.data.driverId ?? null,
+      vehicleId: parsed.data.vehicleId ?? null,
+      recipientCompany: parsed.data.recipientCompany ?? null,
+      deliveryAddress: parsed.data.deliveryAddress ?? null,
+      contactName: parsed.data.contactName ?? (parsed.data as { recipientName?: string }).recipientName ?? null,
+      contactPhone: parsed.data.contactPhone ?? (parsed.data as { recipientPhone?: string }).recipientPhone ?? null,
+      scheduledAt,
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const delivery = await prisma.delivery.create({ data: createData as any });
     await prisma.alert.create({
       data: {
         companyId: session.companyId,
-        type: 'OPTIMIZATION',
+        type: 'NEW',
         title: 'Nouvelle livraison créée',
         description: `Livraison #${delivery.trackingId} a été créée avec succès.`,
         deliveryId: delivery.id,
