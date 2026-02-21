@@ -41,17 +41,54 @@ export async function PATCH(
       { status: 400 }
     );
   }
+  const data = parsed.data;
+  const hasAnyUpdate =
+    (data.name != null && data.name !== existing.name) ||
+    (data.email != null && data.email !== existing.email) ||
+    (data.phone !== undefined && (data.phone ?? null) !== existing.phone) ||
+    (data.role !== undefined && (data.role ?? null) !== existing.role) ||
+    (data.status != null && data.status !== existing.status) ||
+    (data.region !== undefined && (data.region ?? null) !== existing.region) ||
+    (data.avatarUrl !== undefined && (data.avatarUrl ?? null) !== existing.avatarUrl) ||
+    (data.vehicleId !== undefined && (data.vehicleId ?? null) !== existing.vehicleId) ||
+    (data.licenseExpiry !== undefined &&
+      (() => {
+        const newVal = data.licenseExpiry ? new Date(data.licenseExpiry) : null;
+        return (newVal?.getTime() ?? null) !== (existing.licenseExpiry?.getTime() ?? null);
+      })());
+  if (!hasAnyUpdate && Object.keys(data).length > 0) {
+    return NextResponse.json(
+      { error: "Aucune modification. Modifiez au moins un champ." },
+      { status: 400 }
+    );
+  }
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json(
+      { error: "Modifiez au moins un champ pour enregistrer." },
+      { status: 400 }
+    );
+  }
+  let licenseExpiryDate: Date | null | undefined = undefined;
+  if (data.licenseExpiry !== undefined) {
+    if (data.licenseExpiry) {
+      const d = new Date(data.licenseExpiry);
+      licenseExpiryDate = Number.isNaN(d.getTime()) ? null : d;
+    } else {
+      licenseExpiryDate = null;
+    }
+  }
   const driver = await prisma.driver.update({
     where: { id },
     data: {
-      ...(parsed.data.name != null && { name: parsed.data.name }),
-      ...(parsed.data.email != null && { email: parsed.data.email }),
-      ...(parsed.data.phone !== undefined && { phone: parsed.data.phone }),
-      ...(parsed.data.role !== undefined && { role: parsed.data.role }),
-      ...(parsed.data.status != null && { status: parsed.data.status }),
-      ...(parsed.data.region !== undefined && { region: parsed.data.region }),
-      ...(parsed.data.avatarUrl !== undefined && { avatarUrl: parsed.data.avatarUrl }),
-      ...(parsed.data.vehicleId !== undefined && { vehicleId: parsed.data.vehicleId }),
+      ...(data.name != null && { name: data.name }),
+      ...(data.email != null && { email: data.email }),
+      ...(data.phone !== undefined && { phone: data.phone }),
+      ...(data.role !== undefined && { role: data.role }),
+      ...(data.status != null && { status: data.status }),
+      ...(data.region !== undefined && { region: data.region }),
+      ...(data.avatarUrl !== undefined && { avatarUrl: data.avatarUrl }),
+      ...(data.vehicleId !== undefined && { vehicleId: data.vehicleId }),
+      ...(licenseExpiryDate !== undefined && { licenseExpiry: licenseExpiryDate }),
     },
     include: { vehicle: true },
   });

@@ -34,6 +34,11 @@ export async function POST(request: Request) {
     while (await prisma.driver.findFirst({ where: { code } })) {
       code = nextDriverCode();
     }
+    let licenseExpiryDate: Date | null = null;
+    if (parsed.data.licenseExpiry) {
+      const d = new Date(parsed.data.licenseExpiry);
+      if (!Number.isNaN(d.getTime())) licenseExpiryDate = d;
+    }
     const driver = await prisma.driver.create({
       data: {
         companyId: session.companyId,
@@ -46,8 +51,19 @@ export async function POST(request: Request) {
         region: parsed.data.region ?? null,
         avatarUrl: parsed.data.avatarUrl ?? null,
         vehicleId: parsed.data.vehicleId ?? null,
+        ...(licenseExpiryDate != null && { licenseExpiry: licenseExpiryDate }),
       },
     });
+    await prisma.alert.create({
+      data: {
+        companyId: session.companyId,
+        type:'NEW',
+        title: 'Nouveau chauffeur creér',
+        description: `Chauffeur ${driver.code} a été enregistrer.`,
+        driverId: driver.id,
+      },
+    });
+
     return NextResponse.json(driver);
   } catch (e) {
     console.error("Create driver error:", e);
