@@ -37,9 +37,13 @@ enum RouteStatus {
   PENDING
   IN_PROGRESS
   COMPLETED
+
 }
 
 enum AlertType {
+  NEW	
+  UPDATE	
+  DELETE
   BREAKDOWN
   SPEED
   WEATHER
@@ -111,16 +115,17 @@ model User {
 // ========== FLOTTE & CHAUFFEURS ==========
 
 model Driver {
-  id        String       @id @default(auto()) @map("_id") @db.ObjectId
-  code      String       @unique
-  name      String
-  email     String
-  phone     String?
-  role      String?
-  status    DriverStatus @default(ACTIVE)
-  region    String?
-  avatarUrl String?
-  joinedAt  DateTime?
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  code          String    @unique
+  name          String
+  email         String
+  phone         String?
+  role          String?
+  status        DriverStatus @default(ACTIVE)
+  region        String?
+  avatarUrl     String?
+  joinedAt      DateTime?
+  licenseExpiry DateTime?
 
   companyId String  @db.ObjectId
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -202,6 +207,11 @@ model Delivery {
   amount     Float?         // MongoDB utilise Float pour les montants simples
   currency   String         @default("CFA")
 
+  recipientCompany String?  // Client
+  deliveryAddress  String?  // Destination / adresse de livraison
+  contactName      String?
+  contactPhone     String?
+
   companyId String  @db.ObjectId
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
@@ -214,6 +224,7 @@ model Delivery {
   routes    Route[]
   alerts    Alert[]
 
+  scheduledAt  DateTime?  // Date/heure prévue de livraison
   startedAt   DateTime?
   completedAt DateTime?
   createdAt   DateTime  @default(now())
