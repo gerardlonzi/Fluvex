@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Truck, Map as MapIcon,
-  BarChart3, Leaf, Settings, Users, TruckIcon, Building2,
+  BarChart3, Leaf, Settings, Users, Package, Building2,
   PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -12,12 +12,14 @@ import { useState, useEffect } from 'react';
 import { useLanguage } from '@/src/contexts/language-context';
 import { useSidebar } from '@/src/contexts/sidebar-context';
 import { t } from '@/lib/i18n';
+import Image from "next/image";
+
 
 const menuKeys: { key: string; icon: typeof LayoutDashboard; href: string }[] = [
   { key: 'nav.dashboard', icon: LayoutDashboard, href: '/dashboard' },
   { key: 'nav.fleet', icon: Truck, href: '/dashboard/fleet' },
   { key: 'nav.map', icon: MapIcon, href: '/dashboard/map' },
-  { key: 'nav.deliveries', icon: TruckIcon, href: '/dashboard/deliveries' },
+  { key: 'nav.deliveries', icon: Package, href: '/dashboard/deliveries' },
   { key: 'nav.analytics', icon: BarChart3, href: '/dashboard/analytics' },
   { key: 'nav.performance', icon: Users, href: '/dashboard/drivers' },
   { key: 'nav.sustainability', icon: Leaf, href: '/dashboard/sustainability' }
@@ -47,26 +49,37 @@ export function Sidebar() {
         collapsed ? 'md:w-16 w-full' : 'md:w-64  w-full'
       )}
     >
-      <div className={clsx('hidden md:flex items-center border-b border-border shrink-0', collapsed ? 'p-3 justify-center' : 'p-4 gap-3')}>
-        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
-          <Leaf className="text-white w-5 h-5" />
-        </div>
-        {!collapsed && <span className="text-xl font-bold text-text-main tracking-tight truncate">FLUVEX</span>}
+      <div className={clsx('hidden  md:flex items-center border-b border-border shrink-0', collapsed ? 'p-3 justify-center' : 'p-6 gap-3')}>
+       
+        {collapsed ?  <Image
+                       src="/mini-logo.png"       
+                       alt="mini-logo"
+                       width={300}            
+                       height={300}     
+                      /> 
+                      : 
+                      <>
+                      <Image
+                       src="/logo-light.png"       
+                       alt="logo light"
+                       width={100}            
+                       height={100} 
+                       className='light-hidden'    
+                      />
+                      <Image
+                       src="/logo-dark.png"       
+                       alt="logo light"
+                       width={100}            
+                       height={100}  
+                       className='dark-hidden '    
+   
+                       />
+                       </>
+                      }
+                      
       </div>
 
-      <button
-        type="button"
-        onClick={toggle}
-        className={clsx(
-          'hidden md:flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-text-muted hover:bg-border hover:text-text-main transition-colors mt-2 mx-2',
-          collapsed && 'justify-center px-0'
-        )}
-        title={collapsed ? 'Ouvrir le menu' : 'Réduire le menu'}
-        aria-label={collapsed ? 'Ouvrir le menu' : 'Réduire le menu'}
-      >
-        {collapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
-        {!collapsed && <span>Réduire</span>}
-      </button>
+      
 
       {/* Navigation */}
       <nav className="flex-row justify-between md:justify-normal flex md:block flex-1 px-2 space-y-1 mt-2 overflow-y-auto">
@@ -91,7 +104,19 @@ export function Sidebar() {
           );
         })}
       </nav>
-
+      <button
+        type="button"
+        onClick={toggle}
+        className={clsx(
+          'hidden md:flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-text-muted hover:bg-border hover:text-text-main transition-colors mt-2 mx-2',
+          collapsed && 'justify-center px-0'
+        )}
+        title={collapsed ? 'Ouvrir le menu' : 'Réduire le menu'}
+        aria-label={collapsed ? 'Ouvrir le menu' : 'Réduire le menu'}
+      >
+        {collapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+        {!collapsed && <span>Réduire</span>}
+      </button>
       {/* Bas : entreprise → Paramètres */}
       <div className={clsx('md:p-2 border-t border-border mt-auto', collapsed && 'flex justify-center')}>
         <Link
