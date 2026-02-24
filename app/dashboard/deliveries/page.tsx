@@ -150,8 +150,11 @@ export default function DeliveryDashboard() {
   }, [editDelivery]);
 
   const filteredByTab = useMemo(() => {
-    if (tab === 'active') return deliveries.filter((d) => ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status));
+    if (tab === 'all') return deliveries
+    if (tab === 'active') return deliveries.filter((d) => ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status) && isDeliveryExpired({status:d.status, scheduledAt:d.scheduledAt}) !== true);
     if (tab === 'completed') return deliveries.filter((d) => d.status === 'COMPLETED');
+    if (tab === 'expired') return deliveries.filter((d) => ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status) && isDeliveryExpired({status:d.status, scheduledAt:d.scheduledAt}) === true);
+    
     return deliveries.filter((d) => d.status === 'CANCELLED');
   }, [deliveries, tab]);
 
@@ -180,9 +183,12 @@ export default function DeliveryDashboard() {
     return result;
   }, [filteredByTab, searchQuery, dateFilter]);
 
-  const countActive = deliveries.filter((d) => ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status)).length;
+  const countActive = deliveries.filter((d) => ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status) &&  isDeliveryExpired({status:d.status, scheduledAt:d.scheduledAt}) !== true ).length;
   const countCompleted = deliveries.filter((d) => d.status === 'COMPLETED').length;
   const countCancelled = deliveries.filter((d) => d.status === 'CANCELLED').length;
+  const countAll = deliveries.length;
+  const countExpired = deliveries.filter((d) => ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status) &&  isDeliveryExpired({status:d.status, scheduledAt:d.scheduledAt}) === true ).length;
+
 
   const [exporting, setExporting] = useState(false);
   const handleExport = async () => {
@@ -310,17 +316,19 @@ export default function DeliveryDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard title="Livraisons Actives" value={String(countActive)} trend="—" icon={<Truck className="text-primary" />} />
           <StatCard title="Terminées" value={String(countCompleted)} trend="—" icon={<CheckCircle className="text-accent" />} />
-          <StatCard title="En Attente" value={String(deliveries.filter((d) => d.status === 'PENDING').length)} trend="—" isNegative={false} icon={<Clock className="text-yellow-500" />} />
+          <StatCard title="En Attente" value={String(deliveries.filter((d) => d.status === 'PENDING'  &&  isDeliveryExpired({status:d.status, scheduledAt:d.scheduledAt}) !== true ).length)} trend="—" isNegative={false} icon={<Clock className="text-yellow-500" />} />
           <StatCard title="Annulées" value={String(countCancelled)} trend="—" icon={<AlertTriangle className="text-danger" />} />
         </div>
 
         {/* TABLE SECTION */}
         <div className="bg-surface rounded-xl border border-border shadow-sm overflow-hidden flex flex-col">
           <div className="border-b border-border px-6 flex items-center justify-between bg-surface/50">
-            <div className="flex gap-6">
+            <div className="flex gap-6 pt-5">
+              <TabButton active={tab === 'all'} onClick={() => setTab('all')} label="Tous" count={String(countAll)} />
               <TabButton active={tab === 'active'} onClick={() => setTab('active')} label="Actives" count={String(countActive)} />
               <TabButton active={tab === 'completed'} onClick={() => setTab('completed')} label="Terminées" count={String(countCompleted)} />
               <TabButton active={tab === 'cancelled'} onClick={() => setTab('cancelled')} label="Annulées" count={String(countCancelled)} />
+              <TabButton active={tab === 'expired'} onClick={() => setTab('expired')} label="expirées" count={String(countExpired)} />
             </div>
           </div>
 
