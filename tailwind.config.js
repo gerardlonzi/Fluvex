@@ -11,7 +11,7 @@ module.exports = {
         background: "var(--background)",
         surface: "var(--surface)",
         border: "var(--border)",
-        primary: "#13ec5b",
+        primary: "#00cd44",
         primaryHover: "#10b981",
         accent: "#6366f1",
         danger: "#ef4444",
@@ -25,6 +25,8 @@ module.exports = {
       },
     },
   },
-  plugins: [],
+  plugins: []
+  
+  
 }
 
