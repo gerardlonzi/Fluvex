@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Map, { Layer, Marker, Source, type MapRef, NavigationControl } from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Search, Plus, Minus, Crosshair, X, Locate, Loader2 } from 'lucide-react';
@@ -32,16 +32,22 @@ export default function FleetMap() {
   const [routeGeoJson, setRouteGeoJson] = useState<GeoJSON.FeatureCollection | null>(null);
   const [routeMeta, setRouteMeta] = useState<{ distanceKm: number; durationMin: number } | null>(null);
   const [liveLocations, setLiveLocations] = useState<LiveLocation[]>([]);
+  const [locationsLoaded, setLocationsLoaded] = useState(false);
 
-  // 1. Charger l'adresse de l'entreprise (HUB) depuis la DB
+  // Position par défaut du HUB (Paris) si aucune adresse entreprise
+  const DEFAULT_HUB = { lng: 2.3522, lat: 48.8566 };
+
+  // 1. Charger l'adresse de l'entreprise (HUB) depuis la DB et afficher la position sur la carte
   useEffect(() => {
     const fetchCompanyAndGeocode = async () => {
       try {
         const res = await fetch('/api/company', { credentials: 'include' });
-        if (!res.ok) return;
+        if (!res.ok) {
+          setOrigin(DEFAULT_HUB);
+          return;
+        }
         const company = await res.json();
 
-        // Si l'utilisateur a utilisé le GPS ou tapé une adresse lors de l'inscription, elle est ici dans company.address
         if (company?.address && MAPBOX_TOKEN) {
           const fullAddress = [company.address, company.city, company.country]
             .filter(Boolean)
@@ -55,16 +61,28 @@ export default function FleetMap() {
           if (data?.features?.[0]?.center) {
             const [lng, lat] = data.features[0].center;
             setOrigin({ lng, lat });
-            // On centre immédiatement sur l'adresse de l'entreprise
-            mapRef.current?.flyTo({ center: [lng, lat], zoom: 12, duration: 2000 });
+          } else {
+            setOrigin(DEFAULT_HUB);
           }
+        } else {
+          setOrigin(DEFAULT_HUB);
         }
       } catch (error) {
         console.error("Erreur HUB:", error);
+        setOrigin(DEFAULT_HUB);
       }
     };
     fetchCompanyAndGeocode();
   }, []);
+
+  // Centrer la carte sur le HUB dès que la position est connue (map peut être déjà montée)
+  useEffect(() => {
+    if (!origin) return;
+    const t = setTimeout(() => {
+      mapRef.current?.flyTo({ center: [origin.lng, origin.lat], zoom: 12, duration: 1500 });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [origin]);
 
   // 2. Recherche d'adresse (Autocomplete pour la destination)
   useEffect(() => {
@@ -150,7 +168,7 @@ export default function FleetMap() {
     );
   };
 
-  const routeLayer: Layer = useMemo(() => ({
+  const routeLayer = useMemo((): React.ComponentProps<typeof Layer> => ({
       id: 'route', type: 'line',
       paint: { 'line-color': '#13ec5b', 'line-width': 4, 'line-opacity': 0.9 },
       layout: { 'line-cap': 'round', 'line-join': 'round' },
@@ -164,8 +182,11 @@ export default function FleetMap() {
         const res = await fetch('/api/telemetry/locations?minutes=15', { credentials: 'include' });
         if (!res.ok) return;
         const data = await res.json();
-        if (Array.isArray(data) && !cancelled) setLiveLocations(data);
-      } catch (err) { /* silencieux */ }
+        if (!cancelled) {
+          setLiveLocations(Array.isArray(data) ? data : []);
+          setLocationsLoaded(true);
+        }
+      } catch (err) { if (!cancelled) setLocationsLoaded(true); }
     };
     load();
     const id = setInterval(load, 5000);
@@ -184,13 +205,16 @@ export default function FleetMap() {
       >
         <NavigationControl position="bottom-left" showCompass={false} />
 
-        {/* HUB : C'est ici que s'affichera l'adresse enregistrée à l'inscription */}
+        {/* HUB : position toujours affichée sur la carte (adresse entreprise ou défaut) */}
         {origin && (
-          <Marker latitude={origin.lat} longitude={origin.lng}>
-            <div className="relative">
+          <Marker latitude={origin.lat} longitude={origin.lng} anchor="bottom">
+            <div className="relative flex flex-col items-center">
               <div className="absolute -inset-1 bg-primary/30 rounded-full animate-ping" />
-              <div className="bg-slate-900 border-2 border-[#13ec5b] text-[#13ec5b] p-1.5 rounded-full shadow-xl relative z-10 text-[10px] font-bold">
+              <div className="bg-slate-900 border-2 border-[#13ec5b] text-[#13ec5b] px-2 py-1.5 rounded-lg shadow-xl relative z-10 text-[10px] font-bold whitespace-nowrap">
                 HUB
+              </div>
+              <div className="mt-1 px-2 py-0.5 rounded bg-slate-900/95 border border-slate-700 text-[9px] text-slate-300 max-w-[140px] truncate" title={origin.lng === DEFAULT_HUB.lng && origin.lat === DEFAULT_HUB.lat ? "Configurer l'adresse dans Paramètres" : undefined}>
+                {origin.lng === DEFAULT_HUB.lng && origin.lat === DEFAULT_HUB.lat ? "Adresse à configurer" : "Siège"}
               </div>
             </div>
           </Marker>
@@ -244,6 +268,21 @@ export default function FleetMap() {
           </div>
         )}
       </div>
+
+      {/* Message aucun chauffeur connecté */}
+      {locationsLoaded && liveLocations.length === 0 && (
+        <div className="absolute top-6 right-6 z-10">
+          <div className="rounded-xl bg-slate-900/95 backdrop-blur border border-amber-500/30 px-4 py-3 shadow-xl max-w-[260px]">
+            <p className="text-xs font-bold text-amber-400 uppercase tracking-wide flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              Aucun chauffeur connecté
+            </p>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Les positions des chauffeurs s&apos;afficheront ici dès qu&apos;ils seront en ligne.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Infos Itinéraire */}
       {routeMeta && (
