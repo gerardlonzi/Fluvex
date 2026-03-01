@@ -183,7 +183,7 @@ export default function SettingsPage() {
 
   return (
     <div className="flex-1 bg-background text-text-main min-h-screen">
-      <main className="max-w-5xl mx-auto px-8 py-10">
+      <main className="max-w-5xl mx-auto md:px-8 py-10">
         <div className="mb-10">
           <h2 className="text-3xl font-extrabold tracking-tight mb-2">Configuration</h2>
           <p className="text-text-muted">Gérez le profil de votre entreprise, les notifications et vos intégrations API.</p>
