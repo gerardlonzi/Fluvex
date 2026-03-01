@@ -293,7 +293,7 @@ export default function DeliveryDashboard() {
     <div className="min-h-screen bg-background text-text-main font-sans flex flex-col relative overflow-hidden">
       
       {/* HEADER */}
-      <header className="border-b border-border bg-background/50 backdrop-blur-md px-6 py-4 sticky top-0 z-20">
+      <header className="border-b border-border bg-background/50 backdrop-blur-md md:px-6 py-4 sticky top-0 z-20">
         <div className="max-w-[1600px] mx-auto">
           
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -310,7 +310,7 @@ export default function DeliveryDashboard() {
       </header>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 w-full max-w-[1600px] mx-auto p-6 overflow-y-auto">
+      <main className="flex-1 w-full max-w-[1600px] mx-auto md:p-6 overflow-y-auto">
         
         {/* STATS CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -322,8 +322,8 @@ export default function DeliveryDashboard() {
 
         {/* TABLE SECTION */}
         <div className="bg-surface rounded-xl border border-border shadow-sm overflow-hidden flex flex-col">
-          <div className="border-b border-border px-6 flex items-center justify-between bg-surface/50">
-            <div className="flex gap-6 pt-5">
+          <div className="border-b border-border px-6 overflow-x-auto flex items-center justify-between bg-surface/50">
+            <div className="flex gap-6 pt-5 w-[400px] md:w-auto">
               <TabButton active={tab === 'all'} onClick={() => setTab('all')} label="Tous" count={String(countAll)} />
               <TabButton active={tab === 'active'} onClick={() => setTab('active')} label="Actives" count={String(countActive)} />
               <TabButton active={tab === 'completed'} onClick={() => setTab('completed')} label="Terminées" count={String(countCompleted)} />
@@ -395,8 +395,8 @@ export default function DeliveryDashboard() {
           </div>
 
           {/* TABLE */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto mb-20 md:mb-0">
+            <table className="w-full text-left text-sm w-[1000px] md:w-full ">
               <thead className="bg-background/50 border-b border-border uppercase text-xs font-semibold text-text-muted">
                 <tr>
                   <th className="px-6 py-4">ID Suivi</th>
@@ -437,6 +437,7 @@ export default function DeliveryDashboard() {
                     <td className="px-6 py-4 text-text-muted">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-border flex items-center justify-center">
+                          
                           <User size={12} />
                         </div>
                         {item.driver}
