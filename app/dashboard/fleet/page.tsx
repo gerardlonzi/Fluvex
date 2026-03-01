@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { downloadExport } from '@/utils/downloadExport';
 
+
 // --- TYPES ---
 type DriverRow = {
   id: string;
@@ -198,7 +199,7 @@ export default function FleetPage() {
   return (
     <div className="flex-1 flex flex-col h-full bg-background text-white">
       {/* HEADER */}
-      <header className="flex items-center justify-between px-8 py-5 backdrop-blur-md border-b border-border">
+      <header className="flex flex-col md:flex-row md:items-center justify-between md:px-8 py-5 backdrop-blur-md border-b border-border">
         <div>
           
           <h2 className="text-2xl font-bold tracking-tight text-text-main">Gestion de Flotte</h2>
@@ -207,9 +208,8 @@ export default function FleetPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 mt-8 md:mt-0 justify-between md:justify-normal">
           
-          <button type="button" className="relative p-2.5 text-text-muted hover:bg-border rounded-xl transition-all"></button>
           <button
             type="button"
             onClick={handleExport}
@@ -218,6 +218,8 @@ export default function FleetPage() {
             <Download size={18} />
             Exporter
           </button>
+          <div className="flex gap-3">
+
           <Link
             href="/dashboard/fleet/new"
             className="flex items-center gap-2 bg-primary hover:bg-primaryHover text-background px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-primary/20 active:scale-95"
@@ -225,10 +227,19 @@ export default function FleetPage() {
             <Plus size={20} />
             
           </Link>
+          <Link
+            href="/dashboard/vehicles"
+            className="flex items-center gap-2 bg-primary hover:bg-primaryHover text-background px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-primary/20 active:scale-95"
+          >
+            <Truck size={20} />
+            
+          </Link>
+
+          </div>
         </div>
       </header>
 
-      <div className="p-8 space-y-6">
+      <div className="md:p-8 space-y-6">
         {/* FILTRES (inchangé) */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface p-4 rounded-2xl border border-border shadow-xl">
           <div className="relative flex-1 max-w-md">
@@ -260,11 +271,11 @@ export default function FleetPage() {
         </div>
 
         {/* TABLEAU */}
-        <div className="bg-surface rounded-2xl border border-border overflow-visible shadow-2xl">
+        <div className="bg-surface rounded-2xl border border-border overflow-x-auto md:overflow-visible shadow-2xl">
           {loading ? (
             <div className="p-12 text-center text-text-muted">Chargement des chauffeurs...</div>
           ) : (
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse  w-[800px] md:w-full">
               <thead>
                 <tr className="bg-border/50 border-b border-border">
                   <th className="p-4 text-xs font-bold text-text-muted uppercase">Chauffeur</th>
