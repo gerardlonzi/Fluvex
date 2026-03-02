@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect,useRef } from 'react';
 import { useForm, Controller, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useToast } from '@/src/components/ui/toast';
@@ -36,6 +36,8 @@ export default function RegisterFlow() {
   const [addressCompanySuggestions, setAddressCompanySuggestions] = useState<PlaceResult[]>([]);
   const [isLocating, setIsLocating] = useState(false);
   const { showError, showSuccess } = useToast();
+  const addressSuggestionsRef = useRef<HTMLDivElement>(null);
+
 
   const {
     register,
@@ -64,6 +66,17 @@ export default function RegisterFlow() {
   });
 
   const addressValue = watch('address');
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (addressSuggestionsRef.current && !addressSuggestionsRef.current.contains(e.target as Node)) {
+        setAddressCompanySuggestions([]);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
 
   const handleGeolocate = () => {
     if (!navigator.geolocation) {
@@ -223,7 +236,7 @@ export default function RegisterFlow() {
                 </button>
               </div>
               {addressCompanySuggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 rounded-xl border border-border bg-surface shadow-xl z-50 overflow-hidden">
+                <div ref={addressSuggestionsRef}  className="absolute top-full left-0 right-0 mt-1 rounded-xl border border-border bg-surface shadow-xl z-50 overflow-hidden">
                   {addressCompanySuggestions.map((r) => (
                     <button
                       key={r.id}
