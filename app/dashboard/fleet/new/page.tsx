@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useToast } from '@/src/components/ui/toast';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Save,
   User,
@@ -26,6 +26,8 @@ import type { UploadedFile } from '@/utils/types';
 
 export default function NewDriverPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get('returnTo') || '/dashboard/fleet';
   const { showError, showSuccess } = useToast();
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const docsInputRef = useRef<HTMLInputElement | null>(null);
@@ -148,7 +150,7 @@ export default function NewDriverPage() {
         throw new Error(errData.error || 'Erreur lors de la création.');
       }
       showSuccess('Chauffeur ajouté avec succès');
-      router.push('/dashboard/fleet');
+      router.push(returnTo);
     } catch (err) {
       showError((err as Error).message);
     }
@@ -169,7 +171,7 @@ export default function NewDriverPage() {
             </div>
             <div className="flex items-center gap-3">
               <Link
-                href="/dashboard/fleet"
+                href={returnTo}
                 className="px-6 py-2.5 rounded-lg border border-slate-300 dark:border-border font-semibold text-slate-600 dark:text-text-muted hover:bg-slate-50 dark:hover:bg-surface transition-colors"
               >
                 Annuler

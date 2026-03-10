@@ -29,6 +29,8 @@ import type { PlaceResult, Driver, Vehicle, UploadedFile } from '@/utils/types';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
+const DEFAULT_HUB = { lng: 2.3522, lat: 48.8566 }; // Paris par défaut
+
 export default function CreateLivraison() {
   const router = useRouter();
   const { showError, showSuccess } = useToast();
@@ -38,6 +40,9 @@ export default function CreateLivraison() {
   const [uploadingProofs, setUploadingProofs] = useState(false);
   const [addressSuggestions, setAddressSuggestions] = useState<PlaceResult[]>([]);
   const [addressSearching, setAddressSearching] = useState(false);
+  const [hub, setHub] = useState<{ lng: number; lat: number } | null>(null);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceResult | null>(null);
+  const [routeMeta, setRouteMeta] = useState<{ distanceKm: number; durationMin: number } | null>(null);
   const proofsInputRef = useRef<HTMLInputElement | null>(null);
   const addressSuggestionsRef = useRef<HTMLDivElement | null>(null);
 
@@ -81,9 +86,45 @@ export default function CreateLivraison() {
     });
   }, []);
 
+  // Charger la position HUB (adresse entreprise) pour l'aperçu d'itinéraire
+  useEffect(() => {
+    const loadHub = async () => {
+      try {
+        const res = await fetch('/api/company', { credentials: 'include' });
+        if (!res.ok || !MAPBOX_TOKEN) {
+          setHub(DEFAULT_HUB);
+          return;
+        }
+        const company = await res.json();
+        if (company?.address) {
+          const fullAddress = [company.address, company.city, company.country].filter(Boolean).join(', ');
+          const geoRes = await fetch(
+            `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(fullAddress)}.json?access_token=${encodeURIComponent(
+              MAPBOX_TOKEN
+            )}&limit=1&language=fr`
+          );
+          const data = await geoRes.json();
+          const center = data?.features?.[0]?.center as [number, number] | undefined;
+          if (center) {
+            setHub({ lng: center[0], lat: center[1] });
+          } else {
+            setHub(DEFAULT_HUB);
+          }
+        } else {
+          setHub(DEFAULT_HUB);
+        }
+      } catch {
+        setHub(DEFAULT_HUB);
+      }
+    };
+    loadHub();
+  }, []);
+
   useEffect(() => {
     if (!MAPBOX_TOKEN || !deliveryAddress?.trim() || deliveryAddress.length < 3) {
       setAddressSuggestions([]);
+      setSelectedPlace(null);
+      setRouteMeta(null);
       return;
     }
     const t = setTimeout(() => {
@@ -127,6 +168,31 @@ export default function CreateLivraison() {
   };
 
   const suggestedDriver = drivers.length > 0 ? drivers[0] : null;
+
+  // Calculer un itinéraire entre HUB et adresse sélectionnée pour l'aperçu
+  useEffect(() => {
+    const computeRoute = async () => {
+      if (!MAPBOX_TOKEN || !hub || !selectedPlace) return;
+      try {
+        const [lng, lat] = selectedPlace.center;
+        const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${hub.lng},${hub.lat};${lng},${lat}?geometries=geojson&overview=false&access_token=${encodeURIComponent(
+          MAPBOX_TOKEN
+        )}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        const route = data?.routes?.[0];
+        if (route) {
+          setRouteMeta({
+            distanceKm: route.distance / 1000,
+            durationMin: route.duration / 60,
+          });
+        }
+      } catch {
+        setRouteMeta(null);
+      }
+    };
+    computeRoute();
+  }, [hub, selectedPlace]);
 
   const onSubmit = async (data: CreateDeliveryFormInput) => {
     try {
@@ -265,6 +331,7 @@ export default function CreateLivraison() {
                           onClick={() => {
                             setValue('deliveryAddress', r.place_name);
                             setAddressSuggestions([]);
+                            setSelectedPlace(r);
                           }}
                         >
                           {r.place_name}
@@ -396,9 +463,17 @@ export default function CreateLivraison() {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-text-muted mb-2">
-                  Chauffeur <span className="text-danger">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-text-muted">
+                    Chauffeur <span className="text-danger">*</span>
+                  </label>
+                  <Link
+                    href="/dashboard/fleet/new?returnTo=%2Fdashboard%2Fdeliveries%2Fnew"
+                    className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" /> Ajouter un chauffeur
+                  </Link>
+                </div>
                 <select
                   {...register('driverId')}
                   className={`w-full bg-background border ${errors.driverId ? 'border-danger' : 'border-border'} rounded-xl text-text-main p-4 focus:ring-2 focus:ring-primary`}
@@ -409,11 +484,19 @@ export default function CreateLivraison() {
                       Pas de chauffeur
                     </option>
                   ) : (
-                    drivers.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name} • {d.code}
-                      </option>
-                    ))
+                    drivers.map((d: any) => {
+                      const isMaintenance = d.status === 'MAINTENANCE';
+                      return (
+                        <option
+                          key={d.id}
+                          value={d.id}
+                          disabled={isMaintenance}
+                          className={isMaintenance ? 'text-red-400' : undefined}
+                        >
+                          {d.name} • {d.code} {isMaintenance ? '(Maintenance)' : ''}
+                        </option>
+                      );
+                    })
                   )}
                 </select>
                 {errors.driverId && (
@@ -445,11 +528,19 @@ export default function CreateLivraison() {
                       Pas de véhicule
                     </option>
                   ) : (
-                    vehicles.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name} {v.plateNumber ? `• ${v.plateNumber}` : ''}
-                      </option>
-                    ))
+                    vehicles.map((v: any) => {
+                      const isMaintenance = v.status === 'MAINTENANCE';
+                      return (
+                        <option
+                          key={v.id}
+                          value={v.id}
+                          disabled={isMaintenance}
+                          className={isMaintenance ? 'text-red-400' : undefined}
+                        >
+                          {v.name} {v.plateNumber ? `• ${v.plateNumber}` : ''} {isMaintenance ? '(Maintenance)' : ''}
+                        </option>
+                      );
+                    })
                   )}
                 </select>
                 {errors.vehicleId && (
@@ -545,18 +636,29 @@ export default function CreateLivraison() {
           <div className="lg:col-span-4 mt-8 lg:mt-0">
             <div className="sticky top-24 space-y-6">
               <div className="bg-surface rounded-2xl border border-border overflow-hidden group">
-                <div className="h-48 w-full bg-border relative">
+                <div className="h-48 w-full relative overflow-hidden">
+                  {MAPBOX_TOKEN && selectedPlace ? (
+                    <img
+                      src={`https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+13ec5b(${selectedPlace.center[0]},${selectedPlace.center[1]})/${selectedPlace.center[0]},${selectedPlace.center[1]},11,0/800x300?access_token=${encodeURIComponent(
+                        MAPBOX_TOKEN
+                      )}`}
+                      alt="Aperçu de l'itinéraire"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-border" />
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent z-10 opacity-60" />
                   <div className="absolute bottom-4 left-4 z-20">
                     <span className="text-[10px] font-bold text-primary uppercase tracking-tighter">
                       Aperçu de l&apos;itinéraire
                     </span>
                     <p className="text-sm font-medium flex items-center gap-2 text-text-main">
-                      Entrepôt <ArrowRight className="w-3 h-3" /> Destination
+                      Entrepôt <ArrowRight className="w-3 h-3" /> {selectedPlace?.place_name ?? 'Destination'}
                     </p>
                   </div>
                   <div className="absolute top-4 right-4 z-20 bg-surface/90 backdrop-blur px-3 py-1 rounded-lg text-xs font-bold border border-border text-text-main">
-                    14.2 km
+                    {routeMeta ? `${routeMeta.distanceKm.toFixed(1)} km • ~${Math.round(routeMeta.durationMin)} min` : '— km'}
                   </div>
                 </div>
               </div>

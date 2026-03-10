@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState, useRef, useEffect } from 'react'
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import Link from 'next/link'
@@ -17,6 +17,7 @@ import { updateDeliveryFormSchema, type UpdateDeliveryFormInput } from '@/lib/va
 import type { DeliveryRow, DriverOption, VehicleOption } from '@/utils/types'
 import { deleteDelivery, updateDelivery, cancelDelivery } from './actions'
 import { DateRangePicker, dateRangeQuery } from '@/src/components/ui/date-range-picker'
+
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: 'En attente', LOADING: 'Chargement', TRANSIT: 'En transit', DELAYED: 'Retardé',
@@ -112,6 +113,51 @@ export default function DeliveriesClient({
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
+
+  const [isFiltering, setIsFiltering] = useState(false)
+
+
+  useEffect(() => {
+    const currentFrom = searchParams.get('from')
+    const currentTo = searchParams.get('to')
+  
+    // On fetch seulement si les params ont changé par rapport à l'initial
+    if (
+      (currentFrom || currentTo) && // il y a un filtre actif
+      (currentFrom !== initialFrom || currentTo !== initialTo) // différent de l'initial
+    ) {
+      const fetchFilteredDeliveries = async () => {
+        setIsFiltering(true)
+        try {
+          const params = new URLSearchParams()
+          if (currentFrom) params.set('from', currentFrom)
+          if (currentTo) params.set('to', currentTo)
+  
+          const response = await fetch(`/api/deliveries?${params.toString()}`)
+          if (!response.ok) throw new Error('Erreur lors du filtrage')
+  
+          const { deliveries } = await response.json()
+          setDeliveries(deliveries.map(mapApiToRow))
+        } catch (error) {
+          console.error('Erreur fetch filtré:', error)
+          // Optionnel : toast d'erreur
+          // showError('Impossible de filtrer les livraisons')
+        } finally {
+          setIsFiltering(false)
+        }
+      }
+  
+      fetchFilteredDeliveries()
+    } else {
+      // Si on revient aux params initiaux → on remet les données serveur
+      setDeliveries(initialDeliveries)
+    }
+  }, [searchParams, initialDeliveries, initialFrom, initialTo])
+
+
+
+
+
 
   const filteredByTab = useMemo(() => {
     if (tab === 'all') return deliveries
@@ -261,7 +307,7 @@ export default function DeliveriesClient({
           <StatCard title="Annulées" value={String(countCancelled)} trend="—" icon={<AlertTriangle className="text-danger" />} />
         </div>
 
-        <div className="bg-surface rounded-xl border border-border shadow-sm overflow-hidden flex flex-col">
+        <div className="bg-surface rounded-xl border border-border shadow-sm  flex flex-col">
           <div className="border-b border-border px-6 overflow-x-auto flex items-center justify-between bg-surface/50">
             <div className="flex gap-6 pt-5 w-[400px] md:w-auto">
               <TabButton active={tab === 'all'} onClick={() => setTab('all')} label="Tous" count={String(countAll)} />
@@ -286,7 +332,7 @@ export default function DeliveriesClient({
             <div className="flex gap-3">
               <div className="w-[320px] hidden lg:block">
                 <DateRangePicker
-                  label="Date"
+                  label=""
                   value={range}
                   onChange={(next) => {
                     const sp = new URLSearchParams(searchParams.toString())
@@ -296,7 +342,8 @@ export default function DeliveriesClient({
                     Object.entries(q).forEach(([k, v]) => sp.set(k, v))
                     const qs = sp.toString()
                     router.push(qs ? '/dashboard/deliveries?' + qs : '/dashboard/deliveries')
-                  }}
+                                 
+                     }}
                 />
               </div>
               <button type="button" onClick={handleExport} disabled={exporting} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border border-transparent bg-primary text-[#020617] hover:bg-primaryHover disabled:opacity-70 transition-colors">
@@ -319,7 +366,9 @@ export default function DeliveriesClient({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.map((item) => (
+
+              {isFiltering ? <p>chargement </p> :
+               (filtered.map((item) => (
                   <tr
                     key={item.id}
                     onClick={() => setSelectedDelivery(item)}
@@ -354,7 +403,8 @@ export default function DeliveriesClient({
                       <button type="button" className="p-2 hover:bg-border rounded-full text-text-muted hover:text-primary transition-colors"><ChevronRight size={18} /></button>
                     </td>
                   </tr>
-                ))}
+                )))
+              }
               </tbody>
             </table>
           </div>
