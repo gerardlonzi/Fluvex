@@ -182,8 +182,8 @@ function RouteCard({ delivery }: { delivery: DeliveryApi }) {
       )}
       <div className="mt-3 pt-3 border-t border-border flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-border flex items-center justify-center text-[10px] text-text-main font-bold">
-            {driverName.charAt(0).toUpperCase()}
+          <div className=" ">
+            <img src={delivery.driver.avatarUrl} className="w-full w-6 h-6 rounded-full" />
           </div>
           <span className="text-xs text-text-muted truncate max-w-[120px]">{driverName}</span>
         </div>
