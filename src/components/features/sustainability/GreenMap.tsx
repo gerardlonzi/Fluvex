@@ -64,15 +64,26 @@ export function GreenMap() {
         }
 
         const routes: RouteShape[] = [];
+        const hubAddress = fullAddress || '';
         for (const d of deliveries || []) {
-          for (const r of d.routes || []) {
-            if (r.origin || r.destination) {
-              routes.push({
-                origin: r.origin ?? null,
-                destination: r.destination ?? null,
-                score: r.score ?? null,
-              });
+          const deliveryDest = (d as { deliveryAddress?: string | null }).deliveryAddress?.trim() || null;
+          const hasRouteRows = (d.routes || []).length > 0;
+          if (hasRouteRows) {
+            for (const r of d.routes || []) {
+              if (r.origin || r.destination) {
+                routes.push({
+                  origin: r.origin ?? null,
+                  destination: r.destination ?? null,
+                  score: r.score ?? null,
+                });
+              }
             }
+          } else if (hubAddress && deliveryDest) {
+            routes.push({
+              origin: hubAddress,
+              destination: deliveryDest,
+              score: null,
+            });
           }
         }
 
