@@ -90,19 +90,21 @@ export default function DeliveriesClient({
   initialVehicles,
   initialFrom,
   initialTo,
+  companyCreatedAt,
 }: {
   initialDeliveries: DeliveryRow[]
   initialDrivers: DriverOption[]
   initialVehicles: VehicleOption[]
   initialFrom: string | null
   initialTo: string | null
+  companyCreatedAt: string
 }) {
   const { showError, showSuccess } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
   const range = useMemo(() => dateRangeQuery.parse(searchParams), [searchParams])
   const [deliveries, setDeliveries] = useState<DeliveryRow[]>(initialDeliveries)
-  const [tab, setTab] = useState<'all' | 'active' | 'completed' | 'cancelled'>('active')
+  const [tab, setTab] = useState<'all' | 'active' | 'completed' | 'cancelled' | 'expired'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryRow | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -136,7 +138,8 @@ export default function DeliveriesClient({
           const response = await fetch(`/api/deliveries?${params.toString()}`)
           if (!response.ok) throw new Error('Erreur lors du filtrage')
   
-          const { deliveries } = await response.json()
+          const data = await response.json()
+          const deliveries = Array.isArray(data) ? data : (data?.deliveries ?? [])
           setDeliveries(deliveries.map(mapApiToRow))
         } catch (error) {
           console.error('Erreur fetch filtré:', error)
@@ -163,6 +166,7 @@ export default function DeliveriesClient({
     if (tab === 'all') return deliveries
     if (tab === 'active') return deliveries.filter((d) => ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status) && !isDeliveryExpired({ status: d.status, scheduledAt: d.scheduledAt }))
     if (tab === 'completed') return deliveries.filter((d) => d.status === 'COMPLETED')
+    if (tab === 'expired') return deliveries.filter((d) => ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status) && isDeliveryExpired({ status: d.status, scheduledAt: d.scheduledAt }))
     return deliveries.filter((d) => d.status === 'CANCELLED')
   }, [deliveries, tab])
 
@@ -314,7 +318,7 @@ export default function DeliveriesClient({
               <TabButton active={tab === 'active'} onClick={() => setTab('active')} label="Actives" count={String(countActive)} />
               <TabButton active={tab === 'completed'} onClick={() => setTab('completed')} label="Terminées" count={String(countCompleted)} />
               <TabButton active={tab === 'cancelled'} onClick={() => setTab('cancelled')} label="Annulées" count={String(countCancelled)} />
-              <TabButton active={false} onClick={() => {}} label="Expirées" count={String(countExpired)} />
+              <TabButton active={tab === 'expired'} onClick={() => setTab('expired')} label="Expirées" count={String(countExpired)} />
             </div>
           </div>
 
@@ -334,6 +338,8 @@ export default function DeliveriesClient({
                 <DateRangePicker
                   label=""
                   value={range}
+                  minDate={new Date(companyCreatedAt)}
+                  maxDate={new Date()}
                   onChange={(next) => {
                     const sp = new URLSearchParams(searchParams.toString())
                     sp.delete('from')
@@ -583,6 +589,10 @@ function DeliveryTimeline({ delivery }: { delivery: DeliveryRow }) {
     </div>
   )
 }
+
+
+
+
 
 function EditDeliveryModal({
   delivery,

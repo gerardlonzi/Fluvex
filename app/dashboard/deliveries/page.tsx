@@ -68,6 +68,13 @@ export default async function DeliveriesPage({
   const session = await getSession()
   if (!session) redirect('/login')
 
+  const company = await prisma.company.findUnique({
+    where: { id: session.companyId },
+    select: { createdAt: true },
+  })
+  const companyCreatedAt = company?.createdAt ?? new Date()
+  const companyCreatedAtYmd = `${companyCreatedAt.getFullYear()}-${String(companyCreatedAt.getMonth() + 1).padStart(2, '0')}-${String(companyCreatedAt.getDate()).padStart(2, '0')}`
+
   const { from, to } = await searchParams
   const fromDate = parseYmd(from)
   const toDate = parseYmd(to)
@@ -109,6 +116,7 @@ export default async function DeliveriesPage({
       initialVehicles={initialVehicles}
       initialFrom={from ?? null}
       initialTo={to ?? null}
+      companyCreatedAt={companyCreatedAtYmd}
     />
   )
 }
