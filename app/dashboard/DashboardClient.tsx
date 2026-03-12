@@ -17,6 +17,67 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 
+type ChartDelivery = { createdAt: string; status: string; amount: number | null }
+
+function getAllDaysBetween(fromYmd: string, toYmd: string): string[] {
+  const days: string[] = []
+  const start = new Date(fromYmd)
+  const end = new Date(toYmd)
+  const d = new Date(start)
+  d.setHours(0, 0, 0, 0)
+  end.setHours(0, 0, 0, 0)
+  while (d <= end) {
+    days.push(d.toISOString().slice(0, 10))
+    d.setDate(d.getDate() + 1)
+  }
+  return days
+}
+
+function formatDateDDMMYYYY(ymd: string): string {
+  const [y, m, d] = ymd.split('-')
+  return `${d}-${m}-${y}`
+}
+
+function buildChartData(deliveries: ChartDelivery[], fromYmd: string, toYmd: string) {
+  const byDay = new Map<string, { livraisons: number; revenu: number; co2: number }>()
+  deliveries.forEach((d) => {
+    const day = d.createdAt.slice(0, 10)
+    const entry = byDay.get(day) ?? { livraisons: 0, revenu: 0, co2: 0 }
+    entry.livraisons += 1
+    if (d.status === 'COMPLETED') {
+      entry.revenu += Number(d.amount) || 0
+      entry.co2 += 0.5
+    }
+    byDay.set(day, entry)
+  })
+  const days = getAllDaysBetween(fromYmd, toYmd)
+  return days.map((date) => ({
+    date,
+    Livraisons: byDay.get(date)?.livraisons ?? 0,
+    Revenu: Math.round(byDay.get(date)?.revenu ?? 0),
+    'CO₂ (kg)': Math.round((byDay.get(date)?.co2 ?? 0) * 10) / 10,
+  }))
+}
+
+function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number }>; label?: string }) {
+  if (!active || !payload?.length || !label) return null
+  return (
+    <div className="rounded-lg border px-4 py-3 shadow-lg text-sm bg-[var(--color-surface-raised)] border-[var(--color-border-2)] text-[var(--text-main)]">
+      <p className="font-bold border-b border-border pb-1.5 mb-2">{formatDateDDMMYYYY(label)}</p>
+      <ul className="space-y-1">
+        {payload.map((entry) => (
+          <li key={entry.name} className="flex justify-between gap-4">
+            <span className="text-text-muted">{entry.name}</span>
+            <span className="font-semibold">
+              {entry.name === 'Revenu' ? `${Number(entry.value).toLocaleString('fr-FR')} CFA` : entry.name === 'CO₂ (kg)' ? `${entry.value} kg` : entry.value}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 const STATUS_LABELS: Record<string, string> = {
   PENDING: 'En attente',
   LOADING: 'Chargement',
@@ -55,53 +116,64 @@ export default function DashboardClient({
   initialStats,
   initialFrom,
   initialTo,
+  companyCreatedAt,
+  initialChartDeliveries,
+  chartFrom,
+  chartTo,
 }: {
   initialRecentDeliveries: RecentDelivery[]
   initialStats: DashboardStats
   initialFrom: string | null
   initialTo: string | null
+  companyCreatedAt: string
+  initialChartDeliveries: ChartDelivery[]
+  chartFrom: string
+  chartTo: string
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
   const [recentDeliveries, setRecentDeliveries] = useState<RecentDelivery[]>(initialRecentDeliveries || [])
   const [stats, setStats] = useState<DashboardStats>(initialStats)
+  const [chartDeliveries, setChartDeliveries] = useState<ChartDelivery[]>(initialChartDeliveries)
+  const [chartRange, setChartRange] = useState({ from: chartFrom, to: chartTo })
   const [isLoadingRecent, setIsLoadingRecent] = useState(false)
-  const [range, setRange] = useState(dateRangeQuery.parse(searchParams))
+  const range = useMemo(() => dateRangeQuery.parse(searchParams), [searchParams])
 
-  // NOUVEAU useEffect aligné sur celui de DeliveriesClient
+  const chartData = useMemo(
+    () => buildChartData(chartDeliveries, chartRange.from, chartRange.to),
+    [chartDeliveries, chartRange.from, chartRange.to]
+  )
+
+  // Filtrage : met à jour stats, livraisons récentes et données graphe
   useEffect(() => {
     const currentFrom = searchParams.get('from')
     const currentTo = searchParams.get('to')
+    const from = currentFrom ?? companyCreatedAt
+    const to = currentTo ?? new Date().toISOString().slice(0, 10)
 
-    // On fetch SEULEMENT si filtre actif ET différent de l'initial
-    if (
-      (currentFrom || currentTo) &&
-      (currentFrom !== initialFrom || currentTo !== initialTo)
-    ) {
+    if (currentFrom || currentTo) {
       const fetchFiltered = async () => {
         setIsLoadingRecent(true)
         try {
           const params = new URLSearchParams()
-          if (currentFrom) params.set('from', currentFrom)
-          if (currentTo) params.set('to', currentTo)
+          params.set('from', currentFrom ?? companyCreatedAt)
+          params.set('to', currentTo ?? to)
 
           const response = await fetch(`/api/deliveries?${params.toString()}`)
           if (!response.ok) throw new Error('Erreur lors du filtrage')
 
-          const { deliveries } = await response.json()
+          const data = await response.json()
+          const deliveries = Array.isArray(data) ? data : (data?.deliveries ?? [])
 
-          // Mise à jour liste récente (limite à 10)
           setRecentDeliveries(deliveries.slice(0, 10))
 
-          // Stats dynamiques
-          const active = deliveries.filter(d => 
+          const active = deliveries.filter((d: { status: string }) =>
             ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status)
           ).length
-
-          const completed = deliveries.filter(d => d.status === 'COMPLETED').length
+          const completed = deliveries.filter((d: { status: string }) => d.status === 'COMPLETED').length
           const co2Saved = Math.round(completed * 0.5)
-          const totalRevenue = deliveries.reduce((sum, d) => sum + (d.amount || 0), 0)
+          const totalRevenue = deliveries.reduce((sum: number, d: { amount?: number | null }) => sum + (d.amount || 0), 0)
 
           setStats({
             ...initialStats,
@@ -112,77 +184,40 @@ export default function DashboardClient({
             from: currentFrom,
             to: currentTo,
           })
+
+          setChartDeliveries(
+            deliveries.map((d: { createdAt: string | Date; status: string; amount: number | null }) => ({
+              createdAt: typeof d.createdAt === 'string' ? d.createdAt : (d.createdAt as Date)?.toISOString?.() ?? '',
+              status: d.status,
+              amount: d.amount,
+            }))
+          )
+          setChartRange({
+            from: currentFrom ?? companyCreatedAt,
+            to: currentTo ?? to,
+          })
         } catch (error) {
           console.error('Erreur fetch filtré dashboard :', error)
-          // Reset en cas d'erreur
           setRecentDeliveries(initialRecentDeliveries || [])
           setStats(initialStats)
+          setChartDeliveries(initialChartDeliveries)
+          setChartRange({ from: chartFrom, to: chartTo })
         } finally {
           setIsLoadingRecent(false)
         }
       }
-
       fetchFiltered()
     } else {
-      // Reset aux données initiales
       setRecentDeliveries(initialRecentDeliveries || [])
       setStats(initialStats)
+      setChartDeliveries(initialChartDeliveries)
+      setChartRange({ from: chartFrom, to: chartTo })
       setIsLoadingRecent(false)
     }
-  }, [searchParams, initialFrom, initialTo, initialRecentDeliveries, initialStats])
+  }, [searchParams, initialFrom, initialTo, initialRecentDeliveries, initialStats, initialChartDeliveries, chartFrom, chartTo, companyCreatedAt])
 
-  // Graph linéaire (Simple Line Chart style)
-  const chartData = useMemo(() => {
-    console.log('[GRAPHE] Calcul démarré - Nombre de livraisons reçues :', recentDeliveries.length)
-    console.log('[GRAPHE] Exemple première livraison :', recentDeliveries[0] || 'Aucune')
-  
-    const map = new Map<string, { livraisons: number; terminees: number; revenu: number; co2: number }>()
-  
-    recentDeliveries.forEach((d, index) => {
-      if (!d?.createdAt || typeof d.createdAt !== 'string') {
-        console.warn(`[GRAPHE] Livraison ignorée #${index} - pas de createdAt valide`)
-        return
-      }
-  
-      const dateObj = new Date(d.createdAt)
-      if (isNaN(dateObj.getTime())) {
-        console.warn(`[GRAPHE] Date invalide ignorée pour livraison #${index} : ${d.createdAt}`)
-        return
-      }
-  
-      const day = dateObj.toISOString().split('T')[0] // YYYY-MM-DD
-  
-      const prev = map.get(day) || { livraisons: 0, terminees: 0, revenu: 0, co2: 0 }
-      prev.livraisons += 1
-  
-      if (d.status === 'COMPLETED') {
-        prev.terminees += 1
-        prev.revenu += Number(d.amount) || 0
-        prev.co2 += 0.5
-      }
-  
-      map.set(day, prev)
-    })
-  
-    const data = Array.from(map.entries())
-      .map(([date, v]) => ({
-        date,
-        Livraisons: v.livraisons,
-        Terminées: v.terminees,
-        Revenu: Math.round(v.revenu),
-        'CO₂ économisé': Math.round(v.co2 * 10) / 10,
-      }))
-      .sort((a, b) => a.date.localeCompare(b.date))
-  
-    console.log('[GRAPHE] Données finales générées :', data)
-    console.log('[GRAPHE] Nombre de points sur le graphe :', data.length)
-  
-    return data
-  }, [recentDeliveries])
-
-  console.log("voici le resultat de ton chartData " + chartData)
   return (
-    <div className="space-y-8 my-16 md:my-0">
+    <div className="space-y-8">
       <div className="md:flex justify-between items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-text-main">Tableau de bord</h1>
@@ -191,10 +226,11 @@ export default function DashboardClient({
         <div className="flex space-x-4 items-center justify-between md:justify-normal mt-10 md:mt-0">
           <div className="w-[280px]">
             <DateRangePicker
-              label="Filtrer par période"
+              label=""
               value={range}
+              minDate={new Date(companyCreatedAt)}
+              maxDate={new Date()}
               onChange={(next) => {
-                setRange(next)
                 const sp = new URLSearchParams(searchParams.toString())
                 sp.delete('from')
                 sp.delete('to')
@@ -219,32 +255,23 @@ export default function DashboardClient({
         <StatCard title="Revenu (période)" value={`${Math.round(stats.totalRevenue).toLocaleString('fr-FR')} CFA`} change="—" trend="up" icon={Activity} />
       </div>
 
+      {/* Graphe : toujours visible, 3 courbes (Livraisons, Revenu, CO₂), données = stats */}
       <div className="bg-surface border border-border rounded-2xl p-6">
         <h2 className="text-lg font-bold text-text-main mb-6">Évolution des performances</h2>
-        <div className="h-80">
-  {chartData.length === 0 ? (
-    <div className="h-full flex flex-col items-center justify-center text-text-muted text-center">
-      <p>Aucune donnée pour le graphe</p>
-      <p className="text-xs mt-2">Vérifie la période sélectionnée ou ajoute des livraisons</p>
-    </div>
-  ) : (
-    <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-        <XAxis dataKey="date" stroke="#9CA3AF" tick={{ fontSize: 12 }} />
-        <YAxis stroke="#9CA3AF" tick={{ fontSize: 12 }} />
-        <Tooltip 
-          contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '6px', color: '#F3F4F6' }}
-        />
-        <Legend wrapperStyle={{ fontSize: '12px' }} />
-        <Line type="monotone" dataKey="Livraisons" stroke="#10B981" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-        <Line type="monotone" dataKey="Terminées" stroke="#3B82F6" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-        <Line type="monotone" dataKey="Revenu" stroke="#F59E0B" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-        <Line type="monotone" dataKey="CO₂ économisé" stroke="#EC4899" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-      </LineChart>
-    </ResponsiveContainer>
-  )}
-</div>
+        <div className="h-[70vh] max-h-[500px] min-h-[280px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-3)" />
+              <XAxis dataKey="date" stroke="var(--color-text-3)" tick={{ fontSize: 12 }} tickFormatter={(v) => new Date(v).getDate().toString()} />
+              <YAxis width={50} stroke="var(--color-text-3)" tick={{ fontSize: 12 }} />
+              <Tooltip content={<ChartTooltip />} cursor={{ stroke: 'var(--color-border-2)' }} />
+              <Legend />
+              <Line type="monotone" dataKey="Livraisons" stroke="var(--color-chart-1)" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6 }} />
+              <Line type="monotone" dataKey="Revenu" stroke="var(--color-chart-3)" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6 }} />
+              <Line type="monotone" dataKey="CO₂ (kg)" stroke="var(--color-chart-4)" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       <div className="">
