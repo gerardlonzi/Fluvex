@@ -61,8 +61,15 @@ function mapApiToRow(d: {
   id: string; trackingId: string; status: string; amount: unknown; currency: string
   driver: { name: string } | null; driverId?: string | null; vehicleId?: string | null
   deliveryAddress?: string | null; recipientCompany?: string | null; contactName?: string | null; contactPhone?: string | null
-  scheduledAt?: string | Date | null; createdAt?: string | null; startedAt?: string | null; completedAt?: string | null
+  packageName?: string | null; weightKg?: number | null; dimensionsL?: number | null; dimensionsW?: number | null; dimensionsH?: number | null; packageType?: string | null
+  scheduledAt?: unknown; createdAt?: unknown; startedAt?: unknown; completedAt?: unknown
 }): DeliveryRow {
+  const toIso = (v: unknown): string | undefined => {
+    if (!v) return undefined
+    if (typeof v === 'string') return v
+    if (v instanceof Date) return v.toISOString()
+    return undefined
+  }
   return {
     id: d.id,
     trackingId: d.trackingId,
@@ -77,10 +84,16 @@ function mapApiToRow(d: {
     currency: d.currency ?? 'CFA',
     contactName: d.contactName ?? undefined,
     contactPhone: d.contactPhone ?? undefined,
-    scheduledAt: d.scheduledAt ? (typeof d.scheduledAt === 'string' ? d.scheduledAt : (d.scheduledAt as Date).toISOString?.()) : undefined,
-    createdAt: d.createdAt ?? undefined,
-    startedAt: d.startedAt ?? undefined,
-    completedAt: d.completedAt ?? undefined,
+    packageName: d.packageName ?? undefined,
+    weightKg: d.weightKg ?? undefined,
+    dimensionsL: d.dimensionsL ?? undefined,
+    dimensionsW: d.dimensionsW ?? undefined,
+    dimensionsH: d.dimensionsH ?? undefined,
+    packageType: d.packageType ?? undefined,
+    scheduledAt: toIso(d.scheduledAt),
+    createdAt: toIso(d.createdAt),
+    startedAt: toIso(d.startedAt),
+    completedAt: toIso(d.completedAt),
   }
 }
 
@@ -456,38 +469,65 @@ export default function DeliveriesClient({
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-8">
-              <div className="rounded-xl overflow-hidden border border-border h-48 bg-background relative group">
-                <div className="absolute inset-0 opacity-40 bg-[url('https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/2.3522,48.8566,12/400x200?access_token=YOUR_TOKEN')] bg-cover bg-center grayscale group-hover:grayscale-0 transition-all duration-500" aria-hidden />
-                <div className="absolute inset-0 bg-gradient-to-t from-surface to-transparent" />
-                <div className="absolute bottom-4 left-4">
-                  <button type="button" className="bg-primary hover:bg-primaryHover text-[#020617] text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-lg"><MapPin size={14} /> Suivre en direct</button>
+              {/* Information du colis - toujours affiché */}
+              <div className="border border-border rounded-xl p-4 bg-background">
+                <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-3">Information du colis</h3>
+                <div className="space-y-2 text-sm">
+                  <p className="text-text-main"><span className="font-medium text-text-muted">Nom du colis:</span> {selectedDelivery.packageName ?? '—'}</p>
+                  <p className="text-text-main"><span className="font-medium text-text-muted">Poids:</span> {selectedDelivery.weightKg != null ? `${selectedDelivery.weightKg} kg` : '—'}</p>
+                  <p className="text-text-main">
+                    <span className="font-medium text-text-muted">Taille (L×l×H):</span>{' '}
+                    {(selectedDelivery.dimensionsL != null || selectedDelivery.dimensionsW != null || selectedDelivery.dimensionsH != null)
+                      ? [selectedDelivery.dimensionsL, selectedDelivery.dimensionsW, selectedDelivery.dimensionsH].filter(Boolean).join(' × ') + ' cm'
+                      : '—'}
+                  </p>
+                  <p className="text-text-main">
+                    <span className="font-medium text-text-muted">Type:</span>{' '}
+                    {selectedDelivery.packageType === 'STANDARD' ? 'Boîte Standard' : selectedDelivery.packageType === 'FRAGILE' ? 'Fragile / Verre' : selectedDelivery.packageType === 'REFRIGERATED' ? 'Réfrigéré' : selectedDelivery.packageType ?? '—'}
+                  </p>
+                  <p className="text-text-main"><span className="font-medium text-text-muted">Montant:</span> {selectedDelivery.amount} {selectedDelivery.currency}</p>
+                  <p className="text-text-muted text-xs"><span className="font-medium text-text-muted">Destination:</span> {selectedDelivery.dest}</p>
                 </div>
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-4">Chronologie</h3>
-                <DeliveryTimeline delivery={selectedDelivery} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-background border border-border p-4 rounded-xl">
-                  <div className="flex items-center gap-2 mb-2 text-text-muted text-xs uppercase font-bold"><User size={14} /> Chauffeur</div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-surface border border-border" />
-                    <div>
-                      <div className="text-sm font-bold text-text-main">{selectedDelivery.driver}</div>
-                      <div className="text-xs text-text-muted">4.9 ★</div>
+
+              {/* Détails - chronologie, chauffeur, client */}
+              <div className="border-t border-border pt-6">
+                <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-4">Détails</h3>
+                <div className="space-y-6">
+                  <div className="rounded-xl overflow-hidden border border-border h-40 bg-background relative group">
+                    <div className="absolute inset-0 opacity-40 bg-[url('https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/2.3522,48.8566,12/400x200?access_token=YOUR_TOKEN')] bg-cover bg-center grayscale group-hover:grayscale-0 transition-all duration-500" aria-hidden />
+                    <div className="absolute inset-0 bg-gradient-to-t from-surface to-transparent" />
+                    <div className="absolute bottom-4 left-4">
+                      <button type="button" className="bg-primary hover:bg-primaryHover text-[#020617] text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-lg"><MapPin size={14} /> Suivre en direct</button>
                     </div>
-                    <button type="button" className="ml-auto bg-border p-1.5 rounded-lg text-primary hover:bg-primary hover:text-black transition-colors"><Phone size={14} /></button>
                   </div>
-                </div>
-                <div className="bg-background border border-border p-4 rounded-xl">
-                  <div className="flex items-center gap-2 mb-2 text-text-muted text-xs uppercase font-bold"><Package size={14} /> Cargaison</div>
-                  <p className="text-text-main font-bold text-lg">{selectedDelivery.amount} <span className="text-sm font-normal text-text-muted">{selectedDelivery.currency}</span></p>
-                  <p className="text-text-muted text-xs">Destination: {selectedDelivery.dest}</p>
+                  <div>
+                    <p className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Chronologie</p>
+                    <DeliveryTimeline delivery={selectedDelivery} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-background border border-border p-4 rounded-xl">
+                      <div className="flex items-center gap-2 mb-2 text-text-muted text-xs uppercase font-bold"><User size={14} /> Chauffeur</div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-surface border border-border" />
+                        <div>
+                          <div className="text-sm font-bold text-text-main">{selectedDelivery.driver}</div>
+                          <div className="text-xs text-text-muted">4.9 ★</div>
+                        </div>
+                        <button type="button" className="ml-auto bg-border p-1.5 rounded-lg text-primary hover:bg-primary hover:text-black transition-colors"><Phone size={14} /></button>
+                      </div>
+                    </div>
+                    <div className="bg-background border border-border p-4 rounded-xl">
+                      <div className="flex items-center gap-2 mb-2 text-text-muted text-xs uppercase font-bold"><Package size={14} /> Cargaison</div>
+                      <p className="text-text-main font-bold text-lg">{selectedDelivery.amount} <span className="text-sm font-normal text-text-muted">{selectedDelivery.currency}</span></p>
+                      <p className="text-text-muted text-xs">Destination: {selectedDelivery.dest}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="border-t border-border pt-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider">Client</h3>
+                  <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider">Client / Destinataire</h3>
                   {(selectedDelivery.client !== '—' || selectedDelivery.contactName || selectedDelivery.contactPhone) && (
                     <span className="flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20"><ShieldCheck size={12} /> Compte Vérifié</span>
                   )}

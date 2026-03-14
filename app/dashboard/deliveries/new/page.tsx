@@ -59,6 +59,7 @@ export default function CreateLivraison() {
       contactName: '',
       phoneNumber: '',
       deliveryAddress: '',
+      packageName: '',
       weight: '',
       length: '',
       width: '',
@@ -206,6 +207,7 @@ export default function CreateLivraison() {
           driverId: data.driverId,
           vehicleId: data.vehicleId,
           proofUrls: proofs.map((p) => p.url),
+          packageName: data.packageName,
           recipientCompany: data.companyName,
           recipientName: data.contactName,
           recipientPhone: data.phoneNumber,
@@ -356,6 +358,20 @@ export default function CreateLivraison() {
                 <h2 className="text-xl font-bold text-text-main">Informations du colis</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-3">
+                  <label className="block text-sm font-medium text-text-muted mb-2">
+                    Nom du colis <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    {...register('packageName')}
+                    className={`w-full bg-background border ${errors.packageName ? 'border-danger' : 'border-border'} rounded-xl text-text-main p-3 focus:ring-2 focus:ring-primary`}
+                    placeholder="ex: Carton équipement client X"
+                  />
+                  {errors.packageName && (
+                    <p className="text-xs text-danger mt-1">{errors.packageName.message}</p>
+                  )}
+                </div>
                 <div className="md:col-span-1">
                   <label className="block text-sm font-medium text-text-muted mb-2">
                     Poids total (kg) <span className="text-danger">*</span>
@@ -667,18 +683,18 @@ export default function CreateLivraison() {
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-3xl" />
                 <h3 className="text-lg font-bold text-text-main mb-6">Estimation de livraison</h3>
                 <div className="grid grid-cols-2 gap-4 mb-8">
-                  <div className="p-4 bg-background rounded-xl border border-border">
+                  <div className="p-5 bg-background rounded-xl border border-border col-span-2 min-h-[88px]">
                     <span className="text-[10px] text-text-muted uppercase font-bold">Coût estimé</span>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-3 mt-2 flex-wrap">
                       <input
                         type="number"
                         min={0}
                         step={0.01}
                         {...register('amount')}
-                        className="text-2xl font-black text-text-main bg-transparent border-none outline-none w-full"
+                        className="text-3xl md:text-4xl font-black text-text-main bg-transparent border-none outline-none w-full min-w-[140px] placeholder:text-text-muted/60"
                         placeholder="0.00"
                       />
-                      <select {...register('currency')} className="text-xs bg-transparent border-none outline-none text-text-muted">
+                      <select {...register('currency')} className="text-base font-bold bg-transparent border-none outline-none text-text-muted py-1">
                         <option value="CFA">CFA</option>
                         <option value="EUR">EUR</option>
                         <option value="USD">USD</option>
