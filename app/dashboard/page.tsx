@@ -12,6 +12,10 @@ function parseYmd(s: string | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d
 }
 
+function toYmd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -20,9 +24,19 @@ export default async function DashboardPage({
   const session = await getSession()
   if (!session) redirect('/login')
 
+  const company = await prisma.company.findUnique({
+    where: { id: session.companyId },
+    select: { createdAt: true },
+  })
+  const companyCreatedAt = company?.createdAt ?? new Date()
+
   const { from, to } = await searchParams
-  const fromDate = parseYmd(from)
-  const toDate = parseYmd(to)
+  let fromDate = parseYmd(from)
+  let toDate = parseYmd(to)
+  if (!fromDate && !toDate) {
+    fromDate = new Date(companyCreatedAt)
+    toDate = new Date()
+  }
   if (toDate) toDate.setHours(23, 59, 59, 999)
 
   // Requête pour les livraisons récentes (limitées à 5, filtrées si période)
@@ -57,28 +71,18 @@ export default async function DashboardPage({
     driver: d.driver ? { name: d.driver.name, ...(d.driver.avatarUrl && { avatarUrl: d.driver.avatarUrl }) } : undefined,
   }))
 
-  // Toutes les livraisons pour calcul stats (pas de take)
+  // Toutes les livraisons pour calcul stats et graphe (même période)
   const allDeliveries = await prisma.delivery.findMany({
     where: {
       companyId: session.companyId,
-      ...(fromDate || toDate
-        ? { createdAt: { ...(fromDate ? { gte: fromDate } : {}), ...(toDate ? { lte: toDate } : {}) } }
-        : {}),
+      createdAt: { ...(fromDate ? { gte: fromDate } : {}), ...(toDate ? { lte: toDate } : {}) },
     },
-    select: { status: true, amount: true, completedAt: true },
+    select: { status: true, amount: true, completedAt: true, createdAt: true, scheduledAt: true },
   })
 
-  // Flotte (inchangé)
   const vehicles = await prisma.vehicle.findMany({
     where: { companyId: session.companyId },
     select: { status: true },
-  })
-
-  // Metrics CO2 (inchangé)
-  const metrics = await prisma.sustainabilityMetric.findFirst({
-    where: { companyId: session.companyId },
-    orderBy: { createdAt: 'desc' },
-    select: { co2AvoidedTonnes: true },
   })
 
   // Nombre de complétées dans la période (adapté au filtre)
@@ -92,16 +96,20 @@ export default async function DashboardPage({
     },
   })
 
-  // Calculs stats (même logique, avec allDeliveries filtré)
-  const activeDeliveries = allDeliveries.filter((d) =>
-    ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status)
+  const now = new Date()
+  const isExpired = (d: { status: string; scheduledAt: Date | null }) =>
+    ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status) &&
+    d.scheduledAt != null && new Date(d.scheduledAt) < now
+
+  const activeDeliveries = allDeliveries.filter(
+    (d) => ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status) && !isExpired(d)
   ).length
 
   const fleetTotal = vehicles.length
   const fleetActive = vehicles.filter((v) => v.status === 'ACTIVE').length
-  const co2Kg = metrics?.co2AvoidedTonnes != null ? Math.round(metrics.co2AvoidedTonnes * 1000) : 0
+  const co2Kg = Math.round(completedInPeriod * 0.5)
   const totalRevenue = allDeliveries
-    .filter((d) => d.amount != null)
+    .filter((d) => d.status === 'COMPLETED' && d.amount != null)
     .reduce((sum, d) => sum + Number(d.amount), 0)
 
   const stats: DashboardStats = {
@@ -116,12 +124,24 @@ export default async function DashboardPage({
     to: to ?? null,
   }
 
+  const chartFrom = fromDate ? toYmd(fromDate) : toYmd(companyCreatedAt)
+  const chartTo = toDate ? toYmd(toDate) : toYmd(new Date())
+  const initialChartDeliveries = allDeliveries.map((d) => ({
+    createdAt: d.createdAt.toISOString(),
+    status: d.status,
+    amount: d.amount,
+  }))
+
   return (
     <DashboardClient
       initialRecentDeliveries={initialRecent}
       initialStats={stats}
       initialFrom={from ?? null}
       initialTo={to ?? null}
+      companyCreatedAt={toYmd(companyCreatedAt)}
+      initialChartDeliveries={initialChartDeliveries}
+      chartFrom={chartFrom}
+      chartTo={chartTo}
     />
   )
 }
