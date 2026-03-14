@@ -52,26 +52,26 @@ export function Sidebar() {
       <div className={clsx('hidden  md:flex items-center border-b border-border shrink-0', collapsed ? 'p-3 justify-center' : 'p-6 gap-3')}>
        
         {collapsed ?  <Image
-                       src="/mini-logo.png"       
+                       src="/icon-logo.png"       
                        alt="mini-logo"
-                       width={300}            
-                       height={300}     
+                       width={120}            
+                       height={120}     
                       /> 
                       : 
                       <>
                       <Image
-                       src="/logo-light.png"       
+                       src="/logo-light-mode.png"       
                        alt="logo light"
-                       width={100}            
-                       height={100} 
+                       width={120}            
+                       height={120} 
                        className='light-hidden'    
                       />
                       <Image
-                       src="/logo-dark.png"       
+                       src="/logo-dark-mode.png"       
                        alt="logo light"
-                       width={100}            
-                       height={100}  
-                       className='dark-hidden '    
+                       width={120}            
+                       height={120}  
+                       className=' dark-hidden'    
    
                        />
                        </>
