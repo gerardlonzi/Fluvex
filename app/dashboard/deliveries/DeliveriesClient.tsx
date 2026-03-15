@@ -16,6 +16,7 @@ import { useToast } from '@/src/components/ui/toast'
 import { updateDeliveryFormSchema, type UpdateDeliveryFormInput } from '@/lib/validations/delivery'
 import type { DeliveryRow, DriverOption, VehicleOption } from '@/utils/types'
 import { deleteDelivery, updateDelivery, cancelDelivery } from './actions'
+import { EXPIRED_LABEL, isActiveDeliveryStatus, isDeliveryExpiredBySchedule } from '@/utils/deliveryStatus'
 import { DateRangePicker, dateRangeQuery } from '@/src/components/ui/date-range-picker'
 
 
@@ -23,15 +24,7 @@ const STATUS_LABELS: Record<string, string> = {
   PENDING: 'En attente', LOADING: 'Chargement', TRANSIT: 'En transit', DELAYED: 'Retardé',
   COMPLETED: 'Terminée', CANCELLED: 'Annulée',
 }
-const EXPIRED_LABEL = 'Livraison expirée'
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
-
-function isDeliveryExpired(row: { status: string; scheduledAt?: string | null }): boolean {
-  if (row.status === 'COMPLETED' || row.status === 'CANCELLED') return false
-  if (!row.scheduledAt) return false
-  const scheduled = new Date(row.scheduledAt)
-  return !Number.isNaN(scheduled.getTime()) && new Date() > scheduled
-}
 
 function isDeliveryDueToday(row: { status: string; scheduledAt?: string | null }): boolean {
   if (row.status === 'COMPLETED' || row.status === 'CANCELLED') return false
@@ -177,9 +170,19 @@ export default function DeliveriesClient({
 
   const filteredByTab = useMemo(() => {
     if (tab === 'all') return deliveries
-    if (tab === 'active') return deliveries.filter((d) => ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status) && !isDeliveryExpired({ status: d.status, scheduledAt: d.scheduledAt }))
+    if (tab === 'active') {
+      return deliveries.filter((d) =>
+        isActiveDeliveryStatus(d.status) &&
+        !isDeliveryExpiredBySchedule({ status: d.status, scheduledAt: d.scheduledAt })
+      )
+    }
     if (tab === 'completed') return deliveries.filter((d) => d.status === 'COMPLETED')
-    if (tab === 'expired') return deliveries.filter((d) => ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status) && isDeliveryExpired({ status: d.status, scheduledAt: d.scheduledAt }))
+    if (tab === 'expired') {
+      return deliveries.filter((d) =>
+        isActiveDeliveryStatus(d.status) &&
+        isDeliveryExpiredBySchedule({ status: d.status, scheduledAt: d.scheduledAt })
+      )
+    }
     return deliveries.filter((d) => d.status === 'CANCELLED')
   }, [deliveries, tab])
 
@@ -196,11 +199,17 @@ export default function DeliveriesClient({
     return result
   }, [filteredByTab, searchQuery])
 
-  const countActive = deliveries.filter((d) => ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status) && !isDeliveryExpired({ status: d.status, scheduledAt: d.scheduledAt })).length
+  const countActive = deliveries.filter((d) =>
+    isActiveDeliveryStatus(d.status) &&
+    !isDeliveryExpiredBySchedule({ status: d.status, scheduledAt: d.scheduledAt })
+  ).length
   const countCompleted = deliveries.filter((d) => d.status === 'COMPLETED').length
   const countCancelled = deliveries.filter((d) => d.status === 'CANCELLED').length
   const countAll = deliveries.length
-  const countExpired = deliveries.filter((d) => ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status) && isDeliveryExpired({ status: d.status, scheduledAt: d.scheduledAt })).length
+  const countExpired = deliveries.filter((d) =>
+    isActiveDeliveryStatus(d.status) &&
+    isDeliveryExpiredBySchedule({ status: d.status, scheduledAt: d.scheduledAt })
+  ).length
 
   const handleExport = async () => {
     setExporting(true)
@@ -320,7 +329,7 @@ export default function DeliveriesClient({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard title="Livraisons Actives" value={String(countActive)} trend="—" icon={<Truck className="text-primary" />} />
           <StatCard title="Terminées" value={String(countCompleted)} trend="—" icon={<CheckCircle className="text-accent" />} />
-          <StatCard title="En Attente" value={String(deliveries.filter((d) => d.status === 'PENDING' && !isDeliveryExpired({ status: d.status, scheduledAt: d.scheduledAt })).length)} trend="—" icon={<Clock className="text-yellow-500" />} />
+          <StatCard title="En Attente" value={String(deliveries.filter((d) => d.status === 'PENDING' && !isDeliveryExpiredBySchedule({ status: d.status, scheduledAt: d.scheduledAt })).length)} trend="—" icon={<Clock className="text-yellow-500" />} />
           <StatCard title="Annulées" value={String(countCancelled)} trend="—" icon={<AlertTriangle className="text-danger" />} />
         </div>
 
@@ -401,10 +410,10 @@ export default function DeliveriesClient({
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(isDeliveryExpired(item) ? EXPIRED_LABEL : item.statusLabel)}`}>
-                        {isDeliveryExpired(item) && <span title="Livraison expirée"><AlertTriangle size={12} className="shrink-0" /></span>}
-                        {isDeliveryDueToday(item) && !isDeliveryExpired(item) && <span title="Livraison prévue aujourd'hui"><Calendar size={12} className="shrink-0 text-primary" /></span>}
-                        {isDeliveryExpired(item) ? EXPIRED_LABEL : item.statusLabel}
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(isDeliveryExpiredBySchedule(item) ? EXPIRED_LABEL : item.statusLabel)}`}>
+                        {isDeliveryExpiredBySchedule(item) && <span title="Livraison expirée"><AlertTriangle size={12} className="shrink-0" /></span>}
+                        {isDeliveryExpiredBySchedule(item) && !isDeliveryExpiredBySchedule(item) && <span title="Livraison prévue aujourd'hui"><Calendar size={12} className="shrink-0 text-primary" /></span>}
+                        {isDeliveryExpiredBySchedule(item) ? EXPIRED_LABEL : item.statusLabel}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-text-muted">
@@ -449,11 +458,11 @@ export default function DeliveriesClient({
                 <div>
                   <div className="flex items-center gap-3 mb-1">
                     <h2 className="text-2xl font-bold text-text-main">{selectedDelivery.trackingId}</h2>
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1.5 ${getStatusColor(isDeliveryExpired(selectedDelivery) ? EXPIRED_LABEL : selectedDelivery.statusLabel)}`}>
-                      {isDeliveryExpired(selectedDelivery) && <span title="Livraison expirée"><AlertTriangle size={12} /></span>}
-                      {isDeliveryDueToday(selectedDelivery) && !isDeliveryExpired(selectedDelivery) && <span title="Livraison prévue aujourd'hui"><Calendar size={12} className="text-primary" /></span>}
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1.5 ${getStatusColor(isDeliveryExpiredBySchedule(selectedDelivery) ? EXPIRED_LABEL : selectedDelivery.statusLabel)}`}>
+                      {isDeliveryExpiredBySchedule(selectedDelivery) && <span title="Livraison expirée"><AlertTriangle size={12} /></span>}
+                      {isDeliveryExpiredBySchedule(selectedDelivery) && !isDeliveryExpiredBySchedule(selectedDelivery) && <span title="Livraison prévue aujourd'hui"><Calendar size={12} className="text-primary" /></span>}
                       <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                      {isDeliveryExpired(selectedDelivery) ? EXPIRED_LABEL : selectedDelivery.statusLabel}
+                      {isDeliveryExpiredBySchedule(selectedDelivery) ? EXPIRED_LABEL : selectedDelivery.statusLabel}
                     </span>
                   </div>
                   <p className="text-text-muted text-sm">Standard Logistics • Zone 4B</p>
