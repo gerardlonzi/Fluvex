@@ -1,7 +1,13 @@
 import { z } from "zod";
 
 export const deliveryStatusEnum = z.enum([
-  "PENDING", "LOADING", "TRANSIT", "DELAYED", "COMPLETED", "CANCELLED"
+  "PENDING",
+  "LOADING",
+  "TRANSIT",
+  "DELAYED",
+  "COMPLETED",
+  "CANCELLED",
+  "EXPIRED",
 ]);
 
 export const createDeliverySchema = z.object({

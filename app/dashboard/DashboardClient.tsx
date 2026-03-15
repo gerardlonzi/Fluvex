@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
 import { DateRangePicker, dateRangeQuery } from '@/src/components/ui/date-range-picker'
 import type { RecentDelivery, DashboardStats } from '@/utils/types'
+import { computeDashboardStatsFromDeliveries } from '@/utils/deliveryStatus'
 import {
   LineChart,
   Line,
@@ -168,22 +169,12 @@ export default function DashboardClient({
 
           setRecentDeliveries(deliveries.slice(0, 10))
 
-          const active = deliveries.filter((d: { status: string }) =>
-            ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status)
-          ).length
-          const completed = deliveries.filter((d: { status: string }) => d.status === 'COMPLETED').length
-          const co2Saved = Math.round(completed * 0.5)
-          const totalRevenue = deliveries.reduce((sum: number, d: { amount?: number | null }) => sum + (d.amount || 0), 0)
-
-          setStats({
-            ...initialStats,
-            activeDeliveries: active,
-            completedThisMonth: completed,
-            co2SavedKg: co2Saved,
-            totalRevenue,
-            from: currentFrom,
-            to: currentTo,
-          })
+          setStats(
+            computeDashboardStatsFromDeliveries(deliveries, initialStats, {
+              from: currentFrom,
+              to: currentTo,
+            })
+          )
 
           setChartDeliveries(
             deliveries.map((d: { createdAt: string | Date; status: string; amount: number | null }) => ({
