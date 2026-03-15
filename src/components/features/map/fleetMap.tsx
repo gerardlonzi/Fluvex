@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Map, { Layer, Marker, Source, type MapRef, NavigationControl } from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { Search, Plus, Minus, Crosshair, X, Locate, Loader2 } from 'lucide-react';
+import { Search, Plus, Minus, Crosshair, X, Locate, Maximize2, Minimize2 } from 'lucide-react';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -19,10 +19,17 @@ type LiveLocation = {
   createdAt: string;
 };
 
-export default function FleetMap() {
+export type FleetMapProps = {
+  selectedDeliveryAddress?: string | null;
+  onRouteMeta?: (meta: { distanceKm: number; durationMin: number } | null) => void;
+  fullscreen?: boolean;
+  onFullscreenChange?: (full: boolean) => void;
+};
+
+export default function FleetMap({ selectedDeliveryAddress = null, onRouteMeta, fullscreen = false, onFullscreenChange }: FleetMapProps) {
   const mapRef = useRef<MapRef | null>(null);
+  const searchBoxRef = useRef<HTMLDivElement | null>(null);
   
-  // Cette partie charge automatiquement l'adresse enregistrée lors de l'inscription
   const [origin, setOrigin] = useState<{ lng: number; lat: number } | null>(null);
   
   const [query, setQuery] = useState('');
@@ -107,6 +114,18 @@ export default function FleetMap() {
     return () => clearTimeout(t);
   }, [query]);
 
+  // Fermer la liste de suggestions quand on clique en dehors
+  useEffect(() => {
+    if (!results.length) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) {
+        setResults([]);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [results.length]);
+
   // 3. Calcul de l'itinéraire
   async function fetchRoute(dest: { lng: number; lat: number; label: string }) {
     if (!MAPBOX_TOKEN || !origin) {
@@ -122,19 +141,45 @@ export default function FleetMap() {
       const route = data?.routes?.[0];
 
       if (route?.geometry) {
+        const meta = { distanceKm: route.distance / 1000, durationMin: route.duration / 60 };
         setRouteGeoJson({
           type: 'FeatureCollection',
           features: [{ type: 'Feature', properties: {}, geometry: route.geometry }],
         });
-        setRouteMeta({
-          distanceKm: route.distance / 1000,
-          durationMin: route.duration / 60,
-        });
+        setRouteMeta(meta);
+        onRouteMeta?.(meta);
       }
     } catch (err) {
       console.error("Erreur itinéraire:", err);
+      onRouteMeta?.(null);
     }
   }
+
+  // Quand une livraison est sélectionnée dans le panel, afficher son itinéraire sur la carte
+  useEffect(() => {
+    if (!MAPBOX_TOKEN || !selectedDeliveryAddress?.trim() || !origin) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(selectedDeliveryAddress)}.json?access_token=${MAPBOX_TOKEN}&limit=1&language=fr`
+        );
+        const data = await res.json();
+        const center = data?.features?.[0]?.center as [number, number] | undefined;
+        if (cancelled || !center) return;
+        const [lng, lat] = center;
+        const dest = { lng, lat, label: selectedDeliveryAddress };
+        setDestination(dest);
+        setQuery(selectedDeliveryAddress);
+        setResults([]);
+        mapRef.current?.flyTo({ center: [lng, lat], zoom: 13, duration: 1000 });
+        await fetchRoute(dest);
+      } catch {
+        if (!cancelled) onRouteMeta?.(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedDeliveryAddress, origin]);
 
   // Fonction GPS (Côté Dashboard pour définir une DESTINATION via GPS si besoin)
   const handleGeolocateDestination = () => {
@@ -194,7 +239,7 @@ export default function FleetMap() {
   }, []);
 
   return (
-    <div className="relative w-full h-full bg-slate-900 group/map">
+    <div className={`relative w-full h-full bg-slate-900 group/map ${fullscreen ? 'fixed inset-0 z-[100]' : ''}`}>
       <Map
         initialViewState={{ latitude: 48.8566, longitude: 2.3522, zoom: 12 }}
         style={{ width: '100%', height: '100%' }}
@@ -243,7 +288,7 @@ export default function FleetMap() {
       </Map>
 
       {/* Interface de recherche Destination */}
-      <div className="absolute top-6 left-6 z-10 w-80">
+      <div className="absolute top-6 left-6 z-10 w-80" ref={searchBoxRef}>
         <div className="flex w-full items-center rounded-xl bg-slate-900/90 backdrop-blur border border-slate-800 p-1 shadow-2xl">
           <div className="pl-3 text-slate-400"><Search className="w-5 h-5" /></div>
           <input className="w-full bg-transparent border-none focus:ring-0 text-sm p-2.5 text-white outline-none" placeholder="Rechercher une destination..." value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -295,8 +340,17 @@ export default function FleetMap() {
         </div>
       )}
 
-      {/* Boutons Zoom & GPS Destination */}
+      {/* Boutons Zoom, GPS, Plein écran */}
       <div className="absolute bottom-8 right-8 z-10 flex flex-col gap-2">
+        {onFullscreenChange && (
+          <button
+            onClick={() => onFullscreenChange(!fullscreen)}
+            className="p-3 bg-slate-900/90 backdrop-blur rounded-lg shadow-xl border border-slate-800 hover:bg-slate-800 text-white transition-colors"
+            aria-label={fullscreen ? 'Réduire' : 'Plein écran'}
+          >
+            {fullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+          </button>
+        )}
         <div className="flex flex-col bg-slate-900/90 backdrop-blur rounded-lg shadow-xl border border-slate-800 overflow-hidden">
           <button onClick={() => mapRef.current?.zoomIn()} className="p-3 hover:bg-slate-800 text-white border-b border-slate-800"><Plus className="w-5 h-5" /></button>
           <button onClick={() => mapRef.current?.zoomOut()} className="p-3 hover:bg-slate-800 text-white"><Minus className="w-5 h-5" /></button>

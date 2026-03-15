@@ -1,20 +1,22 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { 
+import {
   MoreVertical, RefreshCw, Clock, Fuel, Truck, 
   MapPin, AlertTriangle, CheckCircle, Loader2, Download 
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { downloadExport } from '@/utils/downloadExport';
+import { isActiveDeliveryStatus } from '@/utils/deliveryStatus';
 
 type DeliveryApi = {
   id: string;
   trackingId: string;
   status: string;
   createdAt: string;
-  driver: { name: string } | null;
+  driver: { name: string; avatarUrl?: string | null } | null;
   deliveryAddress?: string | null;
+  routes?: { distanceKm?: number | null }[];
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -26,7 +28,13 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: 'Annulée',
 };
 
-export function RoutePanel() {
+export type RoutePanelProps = {
+  selectedDelivery?: DeliveryApi | null;
+  onSelectDelivery?: (d: DeliveryApi | null) => void;
+  routeMetaForSelected?: { distanceKm: number; durationMin: number } | null;
+};
+
+export function RoutePanel({ selectedDelivery = null, onSelectDelivery, routeMetaForSelected = null }: RoutePanelProps) {
   const [exporting, setExporting] = useState(false);
   const [deliveries, setDeliveries] = useState<DeliveryApi[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,19 +46,27 @@ export function RoutePanel() {
       .finally(() => setLoading(false));
   }, []);
 
-  const activeDeliveries = useMemo(() => 
-    deliveries.filter((d) => ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status)),
+  const activeDeliveries = useMemo(
+    () => deliveries.filter((d) => isActiveDeliveryStatus(d.status)),
     [deliveries]
   );
 
   const { delayMinutes, fuelEcoPct } = useMemo(() => {
+    if (selectedDelivery) {
+      const isDelayed = selectedDelivery.status === 'DELAYED';
+      const delayMinutes = isDelayed ? -15 : 0;
+      const fuelEcoPct = selectedDelivery.status === 'COMPLETED' ? 95 : selectedDelivery.status === 'TRANSIT' ? 88 : 75;
+      return { delayMinutes, fuelEcoPct };
+    }
     const delayed = deliveries.filter((d) => d.status === 'DELAYED').length;
     const completed = deliveries.filter((d) => d.status === 'COMPLETED').length;
     const total = deliveries.length || 1;
     const delayMinutes = delayed > 0 ? -Math.round((completed / total) * 15) : 0;
     const fuelEcoPct = total > 0 ? Math.round(70 + (completed / total) * 25) : 0;
     return { delayMinutes, fuelEcoPct };
-  }, [deliveries]);
+  }, [deliveries, selectedDelivery]);
+
+  const distanceKm = routeMetaForSelected?.distanceKm ?? selectedDelivery?.routes?.[0]?.distanceKm ?? null;
 
   const handleExport = async () => {
     setExporting(true);
@@ -97,6 +113,28 @@ export function RoutePanel() {
             <span className="text-xs font-normal ml-0.5 text-primary">%</span>
           </p>
         </div>
+        {distanceKm != null && (
+          <div className="col-span-2 bg-border/50 rounded-lg p-3 border border-border">
+            <div className="flex items-center gap-2 text-text-muted mb-1">
+              <MapPin className="w-4 h-4" />
+              <span className="text-xs font-medium">Distance</span>
+            </div>
+            <p className="text-lg font-bold text-text-main">
+              {typeof distanceKm === 'number' ? distanceKm.toFixed(1) : distanceKm}{' '}
+              <span className="text-xs font-normal ml-0.5 text-primary">km</span>
+              {routeMetaForSelected?.durationMin != null && (
+                <span className="text-sm font-normal ml-2 text-text-muted">
+                  ~{Math.round(routeMetaForSelected.durationMin)} min
+                </span>
+              )}
+            </p>
+            {selectedDelivery?.deliveryAddress && (
+              <p className="text-xs text-text-muted mt-1 truncate">
+                {selectedDelivery.deliveryAddress}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-2 space-y-4 custom-scrollbar">
@@ -109,7 +147,12 @@ export function RoutePanel() {
           <p className="text-sm text-text-muted py-4">Aucune route active.</p>
         ) : (
           activeDeliveries.slice(0, 20).map((d) => (
-            <RouteCard key={d.id} delivery={d} />
+            <RouteCard
+              key={d.id}
+              delivery={d}
+              isSelected={selectedDelivery?.id === d.id}
+              onSelect={() => onSelectDelivery?.(selectedDelivery?.id === d.id ? null : d)}
+            />
           ))
         )}
       </div>
@@ -124,21 +167,27 @@ export function RoutePanel() {
   );
 }
 
-function RouteCard({ delivery }: { delivery: DeliveryApi }) {
+function RouteCard({ delivery, isSelected, onSelect }: { delivery: DeliveryApi; isSelected?: boolean; onSelect?: () => void }) {
   const status = delivery.status as keyof typeof STATUS_LABELS;
   const label = STATUS_LABELS[status] ?? status;
   const isTransit = delivery.status === 'TRANSIT';
   const isDelayed = delivery.status === 'DELAYED';
   const isLoading = delivery.status === 'LOADING';
   const driverName = delivery.driver?.name ?? 'Non assigné';
+  const avatarUrl = delivery.driver?.avatarUrl;
   const createdAt = new Date(delivery.createdAt);
   const eta = isDelayed ? 'Retardé' : isTransit ? 'À l\'heure' : isLoading ? 'Chargement…' : createdAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onSelect?.()}
       className={clsx(
         'bg-surface border rounded-xl p-4 transition-all cursor-pointer hover:shadow-md relative overflow-hidden',
-        isTransit ? 'border-primary/50 shadow-[0_4px_12px_rgba(16,185,129,0.1)]' : 'border-border hover:border-primary/30'
+        isTransit ? 'border-primary/50 shadow-[0_4px_12px_rgba(16,185,129,0.1)]' : 'border-border hover:border-primary/30',
+        isSelected && 'ring-2 ring-primary ring-offset-2 ring-offset-surface'
       )}
     >
       {isTransit && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
@@ -182,8 +231,8 @@ function RouteCard({ delivery }: { delivery: DeliveryApi }) {
       )}
       <div className="mt-3 pt-3 border-t border-border flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <div className=" ">
-            <img src={delivery.driver.avatarUrl} className="w-full w-6 h-6 rounded-full" />
+          <div className="w-6 h-6 rounded-full bg-border flex items-center justify-center overflow-hidden shrink-0">
+            {avatarUrl ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" /> : <Truck className="w-3 h-3 text-text-muted" />}
           </div>
           <span className="text-xs text-text-muted truncate max-w-[120px]">{driverName}</span>
         </div>
