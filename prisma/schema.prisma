@@ -31,6 +31,7 @@ enum DeliveryStatus {
   DELAYED
   COMPLETED
   CANCELLED
+  EXPIRED
 }
 
 enum RouteStatus {
@@ -206,6 +207,13 @@ model Delivery {
   status     DeliveryStatus @default(PENDING)
   amount     Float?         // MongoDB utilise Float pour les montants simples
   currency   String         @default("CFA")
+
+  packageName String?  // Nom du colis
+  weightKg    Float?   // Poids en kg
+  dimensionsL Float?   // Longueur (cm)
+  dimensionsW Float?   // Largeur (cm)
+  dimensionsH Float?   // Hauteur (cm)
+  packageType String?  // STANDARD | FRAGILE | REFRIGERATED
 
   recipientCompany String?  // Client
   deliveryAddress  String?  // Destination / adresse de livraison
