@@ -26,6 +26,7 @@ const STATUS_LABELS: Record<string, string> = {
   COMPLETED: 'Terminée',
   PENDING: 'En attente',
   CANCELLED: 'Annulée',
+  EXPIRED: 'Livraison expirée',
 };
 
 export type RoutePanelProps = {
@@ -251,6 +252,8 @@ function Badge({ status }: { status: string }) {
     'Chargement': 'bg-accent/20 text-accent border-accent/20',
     'Terminée': 'bg-border text-text-muted border-border',
     'En attente': 'bg-blue-500/20 text-blue-400 border-blue-500/20',
+    'Livraison expirée': 'bg-amber-500/20 text-amber-500 border-amber-500/20',
+    'Annulée': 'bg-gray-500/20 text-gray-400 border-gray-500/20',
   };
   return (
     <span className={clsx('text-[10px] font-bold px-2 py-1 rounded-full border', styles[status] ?? 'bg-border text-text-muted border-border')}>

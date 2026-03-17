@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Map, { Layer, Marker, Source, NavigationControl } from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { Maximize2 } from 'lucide-react';
+import { Maximize2, Minimize2 } from 'lucide-react';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -23,6 +23,7 @@ export function GreenMap() {
   const [center, setCenter] = useState<{ lng: number; lat: number } | null>(null);
   const [corridors, setCorridors] = useState<CorridorGeo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fullscreen, setFullscreen] = useState(false);
   const zoom = 11;
 
   const geocode = useCallback(async (address: string): Promise<[number, number] | null> => {
@@ -188,23 +189,8 @@ export function GreenMap() {
     ? { longitude: center.lng, latitude: center.lat, zoom }
     : { longitude: 2.3522, latitude: 48.8566, zoom: 11 };
 
-  return (
-    <div className="flex flex-col gap-4 h-full">
-      <div className="flex items-center justify-between px-1">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Carte des Corridors Verts</h2>
-          <p className="text-sm text-text-muted">Itinéraires optimisés pour l&apos;efficacité énergétique.</p>
-        </div>
-        <button
-          type="button"
-          className="p-2 rounded-lg bg-surface border border-border hover:text-primary text-text-muted shadow-sm transition-colors"
-          aria-label="Agrandir"
-        >
-          <Maximize2 className="w-5 h-5" />
-        </button>
-      </div>
-
-      <div className="relative w-full flex-1 min-h-[400px] rounded-2xl overflow-hidden border border-border shadow-sm group">
+  const mapContent = (
+    <div className={`relative w-full flex-1 min-h-[400px] rounded-2xl overflow-hidden border border-border shadow-sm group ${fullscreen ? 'fixed inset-0 z-[200] min-h-0 rounded-none border-0' : ''}`}>
         {loading ? (
           <div className="absolute inset-0 bg-slate-800 flex items-center justify-center text-text-muted">
             Chargement de la carte…
@@ -251,7 +237,36 @@ export function GreenMap() {
             <LegendItem color="bg-red-500" label="Congestion" />
           </div>
         </div>
+        {fullscreen && (
+          <button
+            type="button"
+            onClick={() => setFullscreen(false)}
+            className="absolute top-4 right-4 p-2 rounded-lg bg-surface border border-border hover:text-primary text-text-muted shadow-sm transition-colors z-10"
+            aria-label="Réduire"
+          >
+            <Minimize2 className="w-5 h-5" />
+          </button>
+        )}
       </div>
+  );
+
+  return (
+    <div className="flex flex-col gap-4 h-full">
+      <div className="flex items-center justify-between px-1">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Carte des Corridors Verts</h2>
+          <p className="text-sm text-text-muted">Itinéraires optimisés pour l&apos;efficacité énergétique.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setFullscreen(true)}
+          className="p-2 rounded-lg bg-surface border border-border hover:text-primary text-text-muted shadow-sm transition-colors"
+          aria-label="Agrandir"
+        >
+          <Maximize2 className="w-5 h-5" />
+        </button>
+      </div>
+      {mapContent}
     </div>
   );
 }

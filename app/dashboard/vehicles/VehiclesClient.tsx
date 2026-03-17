@@ -67,10 +67,12 @@ export default function VehiclesClient({
   initialVehicles,
   initialFrom,
   initialTo,
+  companyCreatedAt,
 }: {
   initialVehicles: VehicleFromServer[]
   initialFrom: string | null
   initialTo: string | null
+  companyCreatedAt: string
 }) {
   const { showError, showSuccess } = useToast()
   const router = useRouter()
@@ -224,6 +226,8 @@ export default function VehiclesClient({
         <div className="max-w-md">
           <DateRangePicker
             value={range}
+            minDate={new Date(companyCreatedAt)}
+            maxDate={new Date()}
             onChange={(next) => {
               const sp = new URLSearchParams(searchParams.toString())
               sp.delete('from')

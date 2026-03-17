@@ -16,13 +16,18 @@ import { useToast } from '@/src/components/ui/toast'
 import { updateDeliveryFormSchema, type UpdateDeliveryFormInput } from '@/lib/validations/delivery'
 import type { DeliveryRow, DriverOption, VehicleOption } from '@/utils/types'
 import { deleteDelivery, updateDelivery, cancelDelivery } from './actions'
-import { EXPIRED_LABEL, isActiveDeliveryStatus, isDeliveryExpiredBySchedule } from '@/utils/deliveryStatus'
+import {  isActiveDeliveryStatus, isDeliveryExpiredBySchedule } from '@/utils/deliveryStatus'
 import { DateRangePicker, dateRangeQuery } from '@/src/components/ui/date-range-picker'
-
+import { getStatusColor } from '@/utils/getColorStatus'
 
 const STATUS_LABELS: Record<string, string> = {
-  PENDING: 'En attente', LOADING: 'Chargement', TRANSIT: 'En transit', DELAYED: 'Retardé',
-  COMPLETED: 'Terminée', CANCELLED: 'Annulée',
+  PENDING: 'En attente',
+  LOADING: 'Chargement',
+  TRANSIT: 'En transit',
+  DELAYED: 'Retardé',
+  COMPLETED: 'Terminée',
+  CANCELLED: 'Annulée',
+  EXPIRED: 'Livraison expirée',
 }
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
 
@@ -37,18 +42,6 @@ function isDeliveryDueToday(row: { status: string; scheduledAt?: string | null }
     scheduled.getFullYear() === today.getFullYear()
 }
 
-function getStatusColor(statusLabel: string): string {
-  switch (statusLabel) {
-    case EXPIRED_LABEL: return 'bg-amber-500/20 text-amber-500 border-amber-500/40'
-    case 'En transit': return 'bg-primary/10 text-primary border-primary/20'
-    case 'Chargement': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
-    case 'En attente': return 'bg-blue-500/10 text-blue-500 border-blue-500/20'
-    case 'Retardé': return 'bg-danger/10 text-danger border-danger/20'
-    case 'Terminée': return 'bg-primary/10 text-primary border-primary/20'
-    case 'Annulée': return 'bg-gray-500/10 text-gray-500'
-    default: return 'bg-gray-500/10 text-gray-500'
-  }
-}
 
 function mapApiToRow(d: {
   id: string; trackingId: string; status: string; amount: unknown; currency: string
@@ -171,16 +164,14 @@ export default function DeliveriesClient({
   const filteredByTab = useMemo(() => {
     if (tab === 'all') return deliveries
     if (tab === 'active') {
-      return deliveries.filter((d) =>
-        isActiveDeliveryStatus(d.status) &&
-        !isDeliveryExpiredBySchedule({ status: d.status, scheduledAt: d.scheduledAt })
-      )
+      return deliveries.filter((d) => isActiveDeliveryStatus(d.status))
     }
     if (tab === 'completed') return deliveries.filter((d) => d.status === 'COMPLETED')
     if (tab === 'expired') {
-      return deliveries.filter((d) =>
-        isActiveDeliveryStatus(d.status) &&
-        isDeliveryExpiredBySchedule({ status: d.status, scheduledAt: d.scheduledAt })
+      return deliveries.filter(
+        (d) =>
+          d.status === 'EXPIRED' ||
+          (isActiveDeliveryStatus(d.status) && isDeliveryExpiredBySchedule({ status: d.status, scheduledAt: d.scheduledAt }))
       )
     }
     return deliveries.filter((d) => d.status === 'CANCELLED')
@@ -199,16 +190,14 @@ export default function DeliveriesClient({
     return result
   }, [filteredByTab, searchQuery])
 
-  const countActive = deliveries.filter((d) =>
-    isActiveDeliveryStatus(d.status) &&
-    !isDeliveryExpiredBySchedule({ status: d.status, scheduledAt: d.scheduledAt })
-  ).length
+  const countActive = deliveries.filter((d) => isActiveDeliveryStatus(d.status)).length
   const countCompleted = deliveries.filter((d) => d.status === 'COMPLETED').length
   const countCancelled = deliveries.filter((d) => d.status === 'CANCELLED').length
   const countAll = deliveries.length
-  const countExpired = deliveries.filter((d) =>
-    isActiveDeliveryStatus(d.status) &&
-    isDeliveryExpiredBySchedule({ status: d.status, scheduledAt: d.scheduledAt })
+  const countExpired = deliveries.filter(
+    (d) =>
+      d.status === 'EXPIRED' ||
+      (isActiveDeliveryStatus(d.status) && isDeliveryExpiredBySchedule({ status: d.status, scheduledAt: d.scheduledAt }))
   ).length
 
   const handleExport = async () => {
@@ -329,7 +318,7 @@ export default function DeliveriesClient({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard title="Livraisons Actives" value={String(countActive)} trend="—" icon={<Truck className="text-primary" />} />
           <StatCard title="Terminées" value={String(countCompleted)} trend="—" icon={<CheckCircle className="text-accent" />} />
-          <StatCard title="En Attente" value={String(deliveries.filter((d) => d.status === 'PENDING' && !isDeliveryExpiredBySchedule({ status: d.status, scheduledAt: d.scheduledAt })).length)} trend="—" icon={<Clock className="text-yellow-500" />} />
+          <StatCard title="En Attente" value={String(deliveries.filter((d) => d.status === 'PENDING').length)} trend="—" icon={<Clock className="text-yellow-500" />} />
           <StatCard title="Annulées" value={String(countCancelled)} trend="—" icon={<AlertTriangle className="text-danger" />} />
         </div>
 
@@ -410,10 +399,10 @@ export default function DeliveriesClient({
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(isDeliveryExpiredBySchedule(item) ? EXPIRED_LABEL : item.statusLabel)}`}>
-                        {isDeliveryExpiredBySchedule(item) && <span title="Livraison expirée"><AlertTriangle size={12} className="shrink-0" /></span>}
-                        {isDeliveryExpiredBySchedule(item) && !isDeliveryExpiredBySchedule(item) && <span title="Livraison prévue aujourd'hui"><Calendar size={12} className="shrink-0 text-primary" /></span>}
-                        {isDeliveryExpiredBySchedule(item) ? EXPIRED_LABEL : item.statusLabel}
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(item.statusLabel)}`}>
+                        {item.status === 'EXPIRED' && <span title="Livraison expirée"><AlertTriangle size={12} className="shrink-0" /></span>}
+                        {isDeliveryDueToday(item) && item.status !== 'EXPIRED' && <span title="Livraison prévue aujourd'hui"><Calendar size={12} className="shrink-0 text-primary" /></span>}
+                        {item.statusLabel}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-text-muted">
@@ -458,17 +447,17 @@ export default function DeliveriesClient({
                 <div>
                   <div className="flex items-center gap-3 mb-1">
                     <h2 className="text-2xl font-bold text-text-main">{selectedDelivery.trackingId}</h2>
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1.5 ${getStatusColor(isDeliveryExpiredBySchedule(selectedDelivery) ? EXPIRED_LABEL : selectedDelivery.statusLabel)}`}>
-                      {isDeliveryExpiredBySchedule(selectedDelivery) && <span title="Livraison expirée"><AlertTriangle size={12} /></span>}
-                      {isDeliveryExpiredBySchedule(selectedDelivery) && !isDeliveryExpiredBySchedule(selectedDelivery) && <span title="Livraison prévue aujourd'hui"><Calendar size={12} className="text-primary" /></span>}
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1.5 ${getStatusColor(selectedDelivery.statusLabel)}`}>
+                      {selectedDelivery.status === 'EXPIRED' && <span title="Livraison expirée"><AlertTriangle size={12} /></span>}
+                      {isDeliveryDueToday(selectedDelivery) && selectedDelivery.status !== 'EXPIRED' && <span title="Livraison prévue aujourd'hui"><Calendar size={12} className="text-primary" /></span>}
                       <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                      {isDeliveryExpiredBySchedule(selectedDelivery) ? EXPIRED_LABEL : selectedDelivery.statusLabel}
+                      {selectedDelivery.statusLabel}
                     </span>
                   </div>
                   <p className="text-text-muted text-sm">Standard Logistics • Zone 4B</p>
                 </div>
                 <div className="flex gap-2">
-                  {['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(selectedDelivery.status) && (
+                  {['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(selectedDelivery.status) && selectedDelivery.status !== 'EXPIRED' && (
                     <button type="button" onClick={() => setCancelConfirmId(selectedDelivery.id)} disabled={cancellingId === selectedDelivery.id} className="p-2 hover:bg-amber-500/10 rounded-lg text-text-muted hover:text-amber-500 transition-colors" title="Annuler la livraison"><XCircle size={20} /></button>
                   )}
                   <button type="button" onClick={() => setEditDelivery(selectedDelivery)} className="p-2 hover:bg-primary/10 rounded-lg text-text-muted hover:text-primary transition-colors" title="Modifier la livraison"><Pencil size={20} /></button>

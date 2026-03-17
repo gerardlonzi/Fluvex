@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { expireDeliveriesForCompany } from '@/lib/expireDeliveries'
 import DeliveriesClient from './DeliveriesClient'
 import type { DeliveryRow, DriverOption, VehicleOption } from '@/utils/types'
 
@@ -19,6 +20,7 @@ const STATUS_LABELS: Record<string, string> = {
   DELAYED: 'Retardé',
   COMPLETED: 'Terminée',
   CANCELLED: 'Annulée',
+  EXPIRED: 'Livraison expirée',
 }
 
 function mapToRow(d: {
@@ -80,6 +82,8 @@ export default async function DeliveriesPage({
   })
   const companyCreatedAt = company?.createdAt ?? new Date()
   const companyCreatedAtYmd = `${companyCreatedAt.getFullYear()}-${String(companyCreatedAt.getMonth() + 1).padStart(2, '0')}-${String(companyCreatedAt.getDate()).padStart(2, '0')}`
+
+  await expireDeliveriesForCompany(session.companyId)
 
   const { from, to } = await searchParams
   const fromDate = parseYmd(from)

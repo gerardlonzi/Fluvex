@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { expireDeliveriesForCompany } from '@/lib/expireDeliveries'
 import DashboardClient from './DashboardClient'
 import type { RecentDelivery, DashboardStats } from '@/utils/types'
 
@@ -96,13 +97,8 @@ export default async function DashboardPage({
     },
   })
 
-  const now = new Date()
-  const isExpired = (d: { status: string; scheduledAt: Date | null }) =>
-    ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status) &&
-    d.scheduledAt != null && new Date(d.scheduledAt) < now
-
   const activeDeliveries = allDeliveries.filter(
-    (d) => ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status) && !isExpired(d)
+    (d) => ['PENDING', 'LOADING', 'TRANSIT', 'DELAYED'].includes(d.status)
   ).length
 
   const fleetTotal = vehicles.length

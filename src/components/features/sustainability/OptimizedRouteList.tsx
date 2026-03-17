@@ -7,9 +7,10 @@ type Company = { name?: string; address?: string; city?: string; country?: strin
 type DeliveryApi = {
   id: string;
   trackingId: string;
+  status?: string;
   deliveryAddress?: string | null;
   recipientCompany?: string | null;
-  routes?: { origin?: string | null; destination?: string | null; distanceKm?: number | null; score?: number | null }[];
+  routes?: { origin?: string | null; destination?: string | null; distance?: string | null; distanceKm?: number | null; score?: number | null }[];
 };
 
 type RouteItem = {
@@ -46,12 +47,14 @@ export function OptimizedRouteList() {
         ]);
 
         const company: Company = companyRes.ok ? await companyRes.json() : null;
-        const deliveries: DeliveryApi[] = deliveriesRes.ok ? await deliveriesRes.json() : [];
+        const raw = deliveriesRes.ok ? await deliveriesRes.json() : null;
+        const deliveries: DeliveryApi[] = Array.isArray(raw) ? raw : raw?.deliveries ?? [];
 
         const fromLabel = company?.name?.trim() || company?.address?.trim() || 'Siège';
         const built: RouteItem[] = [];
 
         for (const d of deliveries || []) {
+          if (d.status === 'CANCELLED' || d.status === 'EXPIRED') continue;
           const toLabel =
             d.deliveryAddress?.trim() ||
             d.recipientCompany?.trim() ||
@@ -59,6 +62,8 @@ export function OptimizedRouteList() {
           const route = d.routes?.[0];
           const score = route?.score ?? null;
           const distKm = route?.distanceKm ?? null;
+          const rawDistance = route?.distance ?? null;
+
           const badge = scoreToBadge(score);
           built.push({
             id: d.trackingId,
@@ -66,7 +71,12 @@ export function OptimizedRouteList() {
             from: fromLabel,
             to: toLabel,
             co2: score != null ? `Score ${score}` : '—',
-            dist: distKm != null ? `${Math.round(distKm)} km` : '—',
+            dist:
+              distKm != null
+                ? `${Number(distKm).toFixed(1)} km`
+                : rawDistance && rawDistance.trim().length > 0
+                  ? rawDistance
+                  : '—',
             badge,
             score: score != null && score >= 80 ? 'bg-primary' : score != null && score >= 50 ? 'bg-emerald-600' : 'bg-amber-500/20',
           });
@@ -144,7 +154,7 @@ export function OptimizedRouteList() {
                   <p className="text-sm font-bold text-slate-900 dark:text-white">{route.co2}</p>
                 </div>
                 <div className="bg-background p-2 rounded-lg">
-                  <p className="text-[10px] text-text-muted uppercase font-bold">Distance</p>
+                  <p className="text-[10px] text-text-muted uppercase font-bold">Distance (km)</p>
                   <p className="text-sm font-bold text-slate-900 dark:text-white">{route.dist}</p>
                 </div>
               </div>

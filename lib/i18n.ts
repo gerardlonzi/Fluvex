@@ -4,6 +4,7 @@ const translations: Record<Lang, Record<string, string>> = {
   fr: {
     'nav.dashboard': 'Tableau de bord',
     'nav.fleet': 'Gestion de Flotte',
+    'nav.vehicles': 'Véhicules',
     'nav.map': 'Carte en temps réel',
     'nav.deliveries': 'Livraisons',
     'nav.analytics': 'Analytique',
@@ -21,6 +22,7 @@ const translations: Record<Lang, Record<string, string>> = {
   en: {
     'nav.dashboard': 'Dashboard',
     'nav.fleet': 'Fleet Management',
+    'nav.vehicles': 'Vehicles',
     'nav.map': 'Live Map',
     'nav.deliveries': 'Deliveries',
     'nav.analytics': 'Analytics',

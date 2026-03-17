@@ -159,13 +159,17 @@ export default function SustainabilityClient({
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Suspense fallback={<MapSkeleton />}>
-            <GreenMap />
-          </Suspense>
-          <Suspense fallback={<ListSkeleton />}>
-            <OptimizedRouteList />
-          </Suspense>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <Suspense fallback={<MapSkeleton />}>
+              <GreenMap />
+            </Suspense>
+          </div>
+          <div className="lg:col-span-1">
+            <Suspense fallback={<ListSkeleton />}>
+              <OptimizedRouteList />
+            </Suspense>
+          </div>
         </div>
 
         <BannerStat

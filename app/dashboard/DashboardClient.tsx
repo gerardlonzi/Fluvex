@@ -3,6 +3,7 @@
 import { ArrowUpRight, ArrowDownRight, Activity, Battery, Zap, PackageCheck, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { getStatusColor } from '@/utils/getColorStatus'
 import { useState, useEffect, useMemo } from 'react'
 import { DateRangePicker, dateRangeQuery } from '@/src/components/ui/date-range-picker'
 import type { RecentDelivery, DashboardStats } from '@/utils/types'
@@ -86,6 +87,7 @@ const STATUS_LABELS: Record<string, string> = {
   DELAYED: 'Retardé',
   COMPLETED: 'Terminée',
   CANCELLED: 'Annulée',
+  EXPIRED: 'Livraison expirée',
 }
 
 function StatCard({ title, value, change, trend, icon: Icon }: {
@@ -249,7 +251,7 @@ export default function DashboardClient({
       {/* Graphe : toujours visible, 3 courbes (Livraisons, Revenu, CO₂), données = stats */}
       <div className="bg-surface border border-border rounded-2xl p-6">
         <h2 className="text-lg font-bold text-text-main mb-6">Évolution des performances</h2>
-        <div className="h-[70vh] max-h-[500px] min-h-[280px]">
+        <div className="h-[70vh] max-h-[400px] min-h-[280px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-3)" />
@@ -310,7 +312,7 @@ export default function DashboardClient({
                         <span className="text-text-main font-medium">{d.driver?.name ?? '—'}</span>
                       </td>
                       <td className="py-4">
-                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-accent/10 text-accent border border-accent/20">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(STATUS_LABELS[d.status] ?? d.status)}`}>
                           {STATUS_LABELS[d.status] ?? d.status}
                         </span>
                       </td>

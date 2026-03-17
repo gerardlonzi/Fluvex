@@ -182,15 +182,14 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="flex-1 bg-background text-text-main min-h-screen">
-      <main className="max-w-5xl mx-auto md:px-8 py-10">
-        <div className="mb-10">
-          <h2 className="text-3xl font-extrabold tracking-tight mb-2">Configuration</h2>
-          <p className="text-text-muted">Gérez le profil de votre entreprise, les notifications et vos intégrations API.</p>
-        </div>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold text-text-main">Configuration</h1>
+        <p className="text-text-muted mt-1">Gérez le profil de votre entreprise, les notifications et vos intégrations API.</p>
+      </div>
 
         {/* NAVIGATION TABS FONCTIONNELLE */}
-        <div className="flex gap-8 border-b border-border mb-10 overflow-x-auto">
+        <div className="flex gap-8 border-b border-border overflow-x-auto">
           <TabButton 
             active={activeTab === 'profile'} 
             onClick={() => setActiveTab('profile')}
@@ -461,7 +460,6 @@ export default function SettingsPage() {
           )}
 
         </div>
-      </main>
     </div>
   );
 }

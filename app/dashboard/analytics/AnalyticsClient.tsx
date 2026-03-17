@@ -342,7 +342,7 @@ export default function AnalyticsClient({
         <div className="grid grid-cols-1 gap-6">
           <div className="bg-surface rounded-2xl border border-border p-6 shadow-sm">
             <h2 className="text-lg font-bold text-text-main mb-4">Évolution des performances</h2>
-            <div className="h-[70vh] max-h-[500px] min-h-[280px]">
+            <div className="h-[70vh] max-h-[400px] min-h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-3)" />
@@ -398,7 +398,7 @@ export default function AnalyticsClient({
                 <p className="text-text-muted text-sm">Aucun véhicule.</p>
               ) : (
                 <>
-                  <div className="h-48 w-full max-w-[200px] mx-auto">
+                  <div className="h-[40vh] w-full max-w-[300px] mx-auto">
                     {fleetPieData.length > 0 && (
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>

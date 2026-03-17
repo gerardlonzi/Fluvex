@@ -27,10 +27,21 @@ export async function GET(request: Request) {
     if (!Number.isNaN(d.getTime())) createdAtFilter.lt = d;
   }
 
+  // Met à jour en base les livraisons expirées avant de retourner les résultats
+  const now = new Date();
+  await prisma.delivery.updateMany({
+    where: {
+      companyId: session.companyId,
+      status: { in: ["PENDING", "LOADING", "TRANSIT", "DELAYED"] },
+      scheduledAt: { lt: now },
+    },
+    data: { status: "EXPIRED" },
+  });
+
   const deliveries = await prisma.delivery.findMany({
     where: {
       companyId: session.companyId,
-      ...(status ? { status: status as "PENDING" | "LOADING" | "TRANSIT" | "DELAYED" | "COMPLETED" | "CANCELLED" } : {}),
+      ...(status ? { status: status as "PENDING" | "LOADING" | "TRANSIT" | "DELAYED" | "COMPLETED" | "CANCELLED" | "EXPIRED" } : {}),
       ...(driverId ? { driverId } : {}),
       ...(vehicleId ? { vehicleId } : {}),
       ...(Object.keys(createdAtFilter).length ? { createdAt: createdAtFilter } : {}),
@@ -73,6 +84,12 @@ export async function POST(request: Request) {
       currency: parsed.data.currency,
       driverId: parsed.data.driverId ?? null,
       vehicleId: parsed.data.vehicleId ?? null,
+      packageName: (parsed.data as { packageName?: string }).packageName ?? null,
+      weightKg: parsed.data.weightKg ?? null,
+      dimensionsL: parsed.data.dimensionsL ?? null,
+      dimensionsW: parsed.data.dimensionsW ?? null,
+      dimensionsH: parsed.data.dimensionsH ?? null,
+      packageType: parsed.data.packageType ?? null,
       recipientCompany: parsed.data.recipientCompany ?? null,
       deliveryAddress: parsed.data.deliveryAddress ?? null,
       contactName: parsed.data.contactName ?? (parsed.data as { recipientName?: string }).recipientName ?? null,

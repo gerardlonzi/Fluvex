@@ -10,6 +10,16 @@
     --border: #1e293b;
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
+    --color-chart-1: #10B981;   /* vert - Livraisons */
+  --color-chart-2: #3B82F6;   /* bleu - Terminées */
+  --color-chart-3: #F59E0B;   /* orange - Revenu */
+  --color-chart-4: #EC4899;   /* rose - CO₂ */
+  --color-surface-base: #ffffff;
+  --color-surface-raised: #1F2937;
+  --color-border-2: #374151;
+  --color-border-3: #4B5563;
+  --color-text-3: #9CA3AF;
+    
   }
 
   /* Mode clair = quand .light est sur html */
@@ -18,11 +28,77 @@
     --surface: #ffffff;
     --border: #e2e8f0;
     --text-main: #0f172a;
-    --text-muted: #64748b;
+    --text-muted: #2b2b2b;
   }
+}
 
-  body {
-    background-color: var(--background);
-    color: var(--text-main);
+.light .light-hidden {
+  display: none !important;
+}
+
+.dark .dark-hidden {
+  display: none !important;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text-main);
+}
+
+/* Compatibilité animate-in / fade-in / slide-in (utilisés par les skeletons et modales) */
+@layer utilities {
+  .animate-in.fade-in {
+    animation: fade-in 0.3s ease-out both;
   }
+  .animate-in.fade-in.duration-300 {
+    animation-duration: 300ms;
+  }
+  .animate-in.fade-in.duration-500 {
+    animation-duration: 500ms;
+  }
+  .animate-in.slide-in-from-right {
+    animation: slide-in-from-right 0.3s ease-out both;
+  }
+  .animate-in.slide-in-from-right.duration-300 {
+    animation-duration: 300ms;
+  }
+  .animate-in.slide-in-from-bottom-4 {
+    animation: slide-in-from-bottom-4 0.5s ease-out both;
+  }
+  .animate-in.slide-in-from-bottom-4.duration-500 {
+    animation-duration: 500ms;
+  }
+  .animate-in.zoom-in {
+    animation: zoom-in 0.2s ease-out both;
+  }
+  .animate-in.zoom-in.duration-200 {
+    animation-duration: 200ms;
+  }
+  .animate-in.zoom-in-95 {
+    animation: zoom-in-95 0.3s ease-out both;
+  }
+  .animate-in.zoom-in-95.duration-300 {
+    animation-duration: 300ms;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slide-in-from-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes slide-in-from-bottom-4 {
+  from { transform: translateY(1rem); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes zoom-in {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes zoom-in-95 {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
