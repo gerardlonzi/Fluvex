@@ -8,6 +8,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { DateRangePicker, dateRangeQuery } from '@/src/components/ui/date-range-picker'
 import type { RecentDelivery, DashboardStats } from '@/utils/types'
 import { computeDashboardStatsFromDeliveries } from '@/utils/deliveryStatus'
+import {ChartDelivery} from '@/utils/types'
 import {
   LineChart,
   Line,
@@ -19,7 +20,6 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 
-type ChartDelivery = { createdAt: string; status: string; amount: number | null }
 
 function getAllDaysBetween(fromYmd: string, toYmd: string): string[] {
   const days: string[] = []

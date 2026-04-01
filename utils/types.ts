@@ -261,3 +261,40 @@ export type RouteRow = {
   status: string;
   driver?: string;
 };
+
+export type DriverFromServer = {
+  id: string
+  code: string
+  name: string
+  status: string
+  phone: string | null
+  email: string
+  role: string | null
+  region: string | null
+  avatarUrl: string | null
+  createdAt: Date | string
+  vehicle: { name: string } | null
+}
+
+export type DeliveryFromServer = {
+  id: string
+  trackingId: string
+  status: string
+  createdAt: Date | string
+  amount: number | null
+  currency: string
+  driverId: string | null
+}
+
+export type RouteRow = {
+  id: string
+  date: string
+  time: string
+  route: string
+  distance: string
+  score: number
+  status: string
+}
+
+export type ChartDelivery = { createdAt: string; status: string; amount: number | null }
+
