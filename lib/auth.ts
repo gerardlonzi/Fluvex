@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 
 const SESSION_COOKIE = "fluvex_session";
@@ -48,6 +49,12 @@ export async function getSession(): Promise<{ userId: string; companyId: string 
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return null;
   return parseSession(token);
+}
+
+export async function requireAuth(): Promise<{ userId: string; companyId: string }> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  return session;
 }
 
 export async function setSessionCookie(session: string) {

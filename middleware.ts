@@ -3,13 +3,23 @@ import type { NextRequest } from "next/server";
 
 const SESSION_COOKIE = "fluvex_session";
 
+function hasSession(request: NextRequest): boolean {
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  return !!token && token.length >= 10;
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const sessionCookie = request.cookies.get(SESSION_COOKIE)?.value;
+  const authenticated = hasSession(request);
 
-  // Routes protégées : rediriger vers login si pas de session
+  if (pathname === "/") {
+    return NextResponse.redirect(
+      new URL(authenticated ? "/dashboard" : "/login", request.url)
+    );
+  }
+
   if (pathname.startsWith("/dashboard")) {
-    if (!sessionCookie || sessionCookie.length < 10) {
+    if (!authenticated) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("from", pathname);
       return NextResponse.redirect(loginUrl);
@@ -17,8 +27,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Si déjà connecté, rediriger login/register vers dashboard
-  if ((pathname === "/login" || pathname === "/register") && sessionCookie && sessionCookie.length >= 10) {
+  if ((pathname === "/login" || pathname === "/register") && authenticated) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
@@ -26,5 +35,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login", "/register"],
+  matcher: ["/", "/dashboard/:path*", "/login", "/register"],
 };

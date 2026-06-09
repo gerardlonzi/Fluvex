@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hashPassword, createSession, setSessionCookie } from "@/lib/auth";
 import { registerCompanySchema, registerUserSchema, registerSecuritySchema } from "@/lib/validations/auth";
+
+function isDbAuthError(e: unknown): boolean {
+  return (
+    e instanceof Prisma.PrismaClientKnownRequestError ||
+    e instanceof Prisma.PrismaClientUnknownRequestError ||
+    (e instanceof Error &&
+      (e.message.includes("AuthenticationFailed") || e.message.includes("SCRAM failure")))
+  );
+}
 
 export async function POST(request: Request) {
   try {
@@ -26,8 +36,6 @@ export async function POST(request: Request) {
       confirmPassword: body.confirmPassword,
       agreeTerms: body.agreeTerms,
     });
-    console.log(companyData);
-
     if (!companyData.success) {
       return NextResponse.json(
         { error: "Données entreprise invalides", details: companyData.error.flatten() },
@@ -110,6 +118,13 @@ export async function POST(request: Request) {
     });
   } catch (e) {
     console.error("Register error:", e);
+    const isDbError = isDbAuthError(e);
+    if (isDbError) {
+      return NextResponse.json(
+        { error: "Connexion à la base de données impossible. Vérifiez DATABASE_URL dans .env." },
+        { status: 503 }
+      );
+    }
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 }

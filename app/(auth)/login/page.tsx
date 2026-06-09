@@ -32,6 +32,7 @@ export default function LoginPage() {
       if (!res.ok) {
         if (responseData.error?.email) setError('email', { message: responseData.error.email });
         if (responseData.error?.password) setError('password', { message: responseData.error.password });
+        if (typeof responseData.error === 'string') showError(responseData.error);
         return;
       }
       router.push((responseData.redirect as string) || '/dashboard');
