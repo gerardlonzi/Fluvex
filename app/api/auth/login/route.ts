@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { verifyPassword, createSession, setSessionCookie } from "@/lib/auth";
 import { loginSchema } from "@/lib/validations/auth";
+
+function isDbAuthError(e: unknown): boolean {
+  return (
+    e instanceof Prisma.PrismaClientKnownRequestError ||
+    e instanceof Prisma.PrismaClientUnknownRequestError ||
+    (e instanceof Error &&
+      (e.message.includes("AuthenticationFailed") || e.message.includes("SCRAM failure")))
+  );
+}
 
 export async function POST(request: Request) {
   try {
@@ -49,6 +59,12 @@ export async function POST(request: Request) {
     });
   } catch (e) {
     console.error("Login error:", e);
+    if (isDbAuthError(e)) {
+      return NextResponse.json(
+        { error: "Connexion à la base de données impossible. Vérifiez DATABASE_URL dans .env." },
+        { status: 503 }
+      );
+    }
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 }
