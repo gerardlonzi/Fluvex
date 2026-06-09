@@ -1,12 +1,10 @@
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth'
 import FleetClient from './fleetClient'
 import { getFleetData } from './actions'
 import type { DriverRow, VehicleOption } from '@/utils/types' // réutilise tes types
 
 export default async function FleetPage() {
-  const session = await getSession()
-  if (!session?.companyId) redirect('/login')
+  const session = await requireAuth()
 
   const { drivers, vehicles } = await getFleetData()
 

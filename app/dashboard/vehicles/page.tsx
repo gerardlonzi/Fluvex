@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import VehiclesClient from './VehiclesClient'
 
@@ -16,8 +15,7 @@ export default async function VehiclesPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string }>
 }) {
-  const session = await getSession()
-  if (!session) redirect('/login')
+  const session = await requireAuth()
 
   const company = await prisma.company.findUnique({
     where: { id: session.companyId },

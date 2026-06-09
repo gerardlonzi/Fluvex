@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { expireDeliveriesForCompany } from '@/lib/expireDeliveries'
 import DashboardClient from './DashboardClient'
@@ -22,8 +21,7 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string }>
 }) {
-  const session = await getSession()
-  if (!session) redirect('/login')
+  const session = await requireAuth()
 
   const company = await prisma.company.findUnique({
     where: { id: session.companyId },

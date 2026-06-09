@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import DriversClient from './DriversClient'
 
@@ -8,8 +7,7 @@ export default async function DriversPage({
 }: {
   searchParams: Promise<{ driver?: string }>
 }) {
-  const session = await getSession()
-  if (!session) redirect('/login')
+  const session = await requireAuth()
 
   const now = new Date()
   const from = new Date(now)
