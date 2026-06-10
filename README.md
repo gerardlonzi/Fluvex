@@ -207,3 +207,4 @@ Toutes les routes API métier exigent une session valide (`requireSession` dans 
 ## Licence
 
 Projet privé — tous droits réservés.
+Gerard lonzi
