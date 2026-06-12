@@ -207,4 +207,5 @@ Toutes les routes API métier exigent une session valide (`requireSession` dans 
 ## Licence
 
 Projet privé — tous droits réservés.
+en cours de creation de l'app mobile de fluvex
 Gerard lonzi
