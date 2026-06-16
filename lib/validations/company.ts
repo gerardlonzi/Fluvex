@@ -6,6 +6,7 @@ export const updateCompanySchema = z.object({
   phone: z.string().optional().nullable(),
   taxId: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),
   country: z.string().optional(),
   fleetSize: z.string().optional().nullable(),
   industry: z.string().optional(),

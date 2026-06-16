@@ -255,13 +255,6 @@ export type LiveLocation = {
 export type Theme = 'light' | 'dark';
 
 // Drivers page
-export type RouteRow = {
-  id: string;
-  trackingId: string;
-  status: string;
-  driver?: string;
-};
-
 export type DriverFromServer = {
   id: string
   code: string

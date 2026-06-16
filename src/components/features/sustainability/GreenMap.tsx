@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import Map, { Layer, Marker, Source, NavigationControl } from 'react-map-gl';
+import Map, { Layer, Marker, Source, NavigationControl, type LayerProps } from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Maximize2, Minimize2 } from 'lucide-react';
 
@@ -150,7 +150,7 @@ export function GreenMap() {
     [corridorFeatures]
   );
 
-  const lineLayer: Layer = useMemo(
+  const lineLayer: LayerProps = useMemo(
     () => ({
       id: 'corridors',
       type: 'line',
