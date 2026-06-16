@@ -73,6 +73,7 @@ model Company {
   phone     String?
   taxId     String?
   address   String?
+  city      String?
   country   String   @default("FR")
   fleetSize String?
   industry  String   @default("logistics")
