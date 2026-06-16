@@ -35,6 +35,12 @@ function mapToRow(d: {
   recipientCompany: string | null
   contactName: string | null
   contactPhone: string | null
+  packageName: string | null
+  weightKg: number | null
+  dimensionsL: number | null
+  dimensionsW: number | null
+  dimensionsH: number | null
+  packageType: string | null
   scheduledAt: Date | null
   createdAt: Date
   startedAt: Date | null
