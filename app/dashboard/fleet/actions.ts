@@ -42,18 +42,20 @@ export async function updateDriver(id: string, data: UpdateDriverPayload) {
     where: { id },
     data: {
       ...(data.name !== undefined && { name: data.name }),
-      ...(data.email !== undefined && { email: data.email || null }),
+      ...(data.email !== undefined && { email: data.email ?? '' }),
       ...(data.phone !== undefined && { phone: data.phone || null }),
       ...(data.role !== undefined && { role: data.role || null }),
       ...(data.status !== undefined && { status: data.status }),
       ...(data.region !== undefined && { region: data.region || null }),
-      ...(data.vehicleId !== undefined && { vehicleId: data.vehicleId || null }),
+      ...(data.vehicleId !== undefined && {
+        vehicle: data.vehicleId ? { connect: { id: data.vehicleId } } : { disconnect: true },
+      }),
       ...(data.licenseExpiry !== undefined && { 
         licenseExpiry: data.licenseExpiry ? new Date(data.licenseExpiry) : null 
       }),
       ...(data.avatarUrl !== undefined && { avatarUrl: data.avatarUrl || null }),
     },
-    include: { vehicle: { select: { name: true, plateNumber: true } } },
+    include: { vehicle: { select: { id: true, name: true, plateNumber: true } } },
   })
 
   revalidatePath('/dashboard/fleet')
@@ -72,7 +74,7 @@ export async function updateDriverStatus(id: string, status: 'ACTIVE' | 'IDLE' |
   const updated = await prisma.driver.update({
     where: { id },
     data: { status },
-    include: { vehicle: { select: { name: true, plateNumber: true } } },
+    include: { vehicle: { select: { id: true, name: true, plateNumber: true } } },
   })
 
   revalidatePath('/dashboard/fleet')
