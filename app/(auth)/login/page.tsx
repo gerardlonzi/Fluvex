@@ -25,16 +25,25 @@ export default function LoginPage() {
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: data.email.trim(), password: data.password }),
+        body: JSON.stringify({
+          email: data.email.trim().toLowerCase(),
+          password: data.password,
+        }),
       });
       const responseData = await res.json().catch(() => ({}));
       if (!res.ok) {
         if (responseData.error?.email) setError('email', { message: responseData.error.email });
         if (responseData.error?.password) setError('password', { message: responseData.error.password });
-        if (typeof responseData.error === 'string') showError(responseData.error);
+        if (typeof responseData.error === 'string') {
+          showError(responseData.error);
+        } else if (!responseData.error?.email && !responseData.error?.password) {
+          showError('Connexion impossible. Vérifiez votre email et votre mot de passe.');
+        }
         return;
       }
+      router.refresh();
       router.push((responseData.redirect as string) || '/dashboard');
     } catch {
       showError('Erreur réseau, veuillez réessayer.');

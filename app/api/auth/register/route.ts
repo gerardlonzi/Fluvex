@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { hashPassword, createSession, setSessionCookie } from "@/lib/auth";
+import { hashPassword, createSession, applySessionCookie } from "@/lib/auth";
 import { registerCompanySchema, registerUserSchema, registerSecuritySchema } from "@/lib/validations/auth";
 
 function isDbAuthError(e: unknown): boolean {
@@ -55,8 +55,9 @@ export async function POST(request: Request) {
       );
     }
 
+    const email = String(body.email).trim().toLowerCase();
     const existing = await prisma.user.findUnique({
-      where: { email: body.email },
+      where: { email },
     });
     if (existing) {
       return NextResponse.json({ error: "Un compte existe déjà avec cet email" }, { status: 409 });
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
     const company = await prisma.company.create({
       data: {
         name: companyData.data.companyName,
-        email: companyData.data.email,
+        email,
         address: companyData.data.address,
         country: companyData.data.country,
         fleetSize: companyData.data.fleetSize ?? null,
@@ -75,7 +76,7 @@ export async function POST(request: Request) {
 
     const user = await prisma.user.create({
       data: {
-        email: companyData.data.email,
+        email,
         passwordHash: hashPassword(securityData.data.password),
         firstName: userData.data.firstName,
         lastName: userData.data.lastName,
@@ -94,8 +95,7 @@ export async function POST(request: Request) {
       },
     });
 
-    const session = createSession(user.id, company.id);
-    await setSessionCookie(session);
+    const session = await createSession(user.id, company.id);
 
     // Créer une notification de bienvenue
     await prisma.alert.create({
@@ -107,7 +107,7 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       user: {
         id: user.id,
         email: user.email,
@@ -115,7 +115,10 @@ export async function POST(request: Request) {
         lastName: user.lastName,
         companyId: company.id,
       },
+      redirect: "/dashboard",
     });
+    applySessionCookie(response, session);
+    return response;
   } catch (e) {
     console.error("Register error:", e);
     const isDbError = isDbAuthError(e);

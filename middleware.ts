@@ -1,20 +1,20 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { SESSION_COOKIE, parseSession } from "@/lib/session";
 
-const SESSION_COOKIE = "fluvex_session";
-
-function hasSession(request: NextRequest): boolean {
+async function hasSession(request: NextRequest): Promise<boolean> {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
-  return !!token && token.length >= 10;
+  if (!token) return false;
+  return (await parseSession(token)) !== null;
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const authenticated = hasSession(request);
+  const authenticated = await hasSession(request);
 
   if (pathname === "/") {
     return NextResponse.redirect(
-      new URL(authenticated ? "/dashboard" : "/login", request.url)
+      new URL(authenticated ? "/dashboard" : "/login", request.url),
     );
   }
 

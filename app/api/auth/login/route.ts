@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { verifyPassword, createSession, setSessionCookie } from "@/lib/auth";
+import { verifyPassword, createSession, applySessionCookie } from "@/lib/auth";
 import { loginSchema } from "@/lib/validations/auth";
 
 function isDbAuthError(e: unknown): boolean {
@@ -28,8 +28,9 @@ export async function POST(request: Request) {
       );
     }
 
+    const email = parsed.data.email.trim().toLowerCase();
     const user = await prisma.user.findUnique({
-      where: { email: parsed.data.email },
+      where: { email },
       include: { company: true },
     });
     if (!user) {
@@ -44,10 +45,8 @@ export async function POST(request: Request) {
       } }, { status: 401 });
     }
 
-    const session = createSession(user.id, user.companyId);
-    await setSessionCookie(session);
-
-    return NextResponse.json({
+    const session = await createSession(user.id, user.companyId);
+    const response = NextResponse.json({
       user: {
         id: user.id,
         email: user.email,
@@ -57,6 +56,8 @@ export async function POST(request: Request) {
       },
       redirect: "/dashboard",
     });
+    applySessionCookie(response, session);
+    return response;
   } catch (e) {
     console.error("Login error:", e);
     if (isDbAuthError(e)) {
