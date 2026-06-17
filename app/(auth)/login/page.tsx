@@ -3,13 +3,11 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
 import { useToast } from '@/src/components/ui/toast';
 import { loginSchema, type LoginInput } from '@/lib/validations/auth';
 
 export default function LoginPage() {
-  const router = useRouter();
   const { showError } = useToast();
   const {
     register,
@@ -43,8 +41,7 @@ export default function LoginPage() {
         }
         return;
       }
-      router.refresh();
-      router.push((responseData.redirect as string) || '/dashboard');
+      window.location.assign((responseData.redirect as string) || '/dashboard');
     } catch {
       showError('Erreur réseau, veuillez réessayer.');
     }

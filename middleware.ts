@@ -1,16 +1,28 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { SESSION_COOKIE, parseSession } from "@/lib/session";
+import { SESSION_COOKIE } from "@/lib/session";
 
-async function hasSession(request: NextRequest): Promise<boolean> {
+/** Validation légère (Edge) — la signature HMAC est vérifiée par requireAuth() côté serveur. */
+function hasSession(request: NextRequest): boolean {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!token) return false;
-  return (await parseSession(token)) !== null;
+  if (!token || token.length < 20) return false;
+  try {
+    const base64 = token.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+    const decoded = atob(padded);
+    const dot = decoded.indexOf(".");
+    if (dot <= 0) return false;
+    const payload = decoded.slice(0, dot);
+    const parts = payload.split(":");
+    return parts.length === 3 && parts.every(Boolean);
+  } catch {
+    return false;
+  }
 }
 
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const authenticated = await hasSession(request);
+  const authenticated = hasSession(request);
 
   if (pathname === "/") {
     return NextResponse.redirect(

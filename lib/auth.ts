@@ -25,10 +25,17 @@ export function hashPassword(password: string): string {
 }
 
 export function verifyPassword(stored: string, password: string): boolean {
-  const [salt, hash] = stored.split(":");
-  if (!salt || !hash) return false;
-  const computed = scryptSync(password, salt, 64).toString("hex");
-  return timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(computed, "hex"));
+  try {
+    const [salt, hash] = stored.split(":");
+    if (!salt || !hash || !/^[a-f0-9]+$/i.test(hash)) return false;
+    const computed = scryptSync(password, salt, 64).toString("hex");
+    const hashBuf = Buffer.from(hash, "hex");
+    const computedBuf = Buffer.from(computed, "hex");
+    if (hashBuf.length !== computedBuf.length) return false;
+    return timingSafeEqual(hashBuf, computedBuf);
+  } catch {
+    return false;
+  }
 }
 
 export async function getSession(): Promise<{ userId: string; companyId: string } | null> {

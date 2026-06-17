@@ -5,12 +5,26 @@ import { hashPassword, createSession, applySessionCookie } from "@/lib/auth";
 import { registerCompanySchema, registerUserSchema, registerSecuritySchema } from "@/lib/validations/auth";
 
 function isDbAuthError(e: unknown): boolean {
-  return (
+  if (
     e instanceof Prisma.PrismaClientKnownRequestError ||
     e instanceof Prisma.PrismaClientUnknownRequestError ||
-    (e instanceof Error &&
-      (e.message.includes("AuthenticationFailed") || e.message.includes("SCRAM failure")))
-  );
+    e instanceof Prisma.PrismaClientInitializationError
+  ) {
+    return true;
+  }
+  if (e instanceof Error) {
+    const msg = e.message.toLowerCase();
+    return (
+      msg.includes("authenticationfailed") ||
+      msg.includes("scram failure") ||
+      msg.includes("mongodb") ||
+      msg.includes("server selection") ||
+      msg.includes("timed out") ||
+      msg.includes("econnrefused") ||
+      msg.includes("connect")
+    );
+  }
+  return false;
 }
 
 export async function POST(request: Request) {

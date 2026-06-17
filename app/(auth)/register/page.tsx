@@ -5,7 +5,6 @@ import { useForm, Controller, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useToast } from '@/src/components/ui/toast';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   ArrowRight,
   ArrowLeft,
@@ -30,7 +29,6 @@ function getCountryCode(context: Array<{ id: string; short_code: string }> | und
 }
 
 export default function RegisterFlow() {
-  const router = useRouter();
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [addressCompanySuggestions, setAddressCompanySuggestions] = useState<PlaceResult[]>([]);
@@ -148,6 +146,7 @@ export default function RegisterFlow() {
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
@@ -157,7 +156,7 @@ export default function RegisterFlow() {
         return;
       }
       showSuccess('Compte créé avec succès !');
-      router.push('/dashboard');
+      window.location.assign((responseData.redirect as string) || '/dashboard');
     } catch {
       showError('Erreur réseau, veuillez réessayer.');
     }
