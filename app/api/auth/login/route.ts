@@ -1,44 +1,29 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { assertDatabaseConfigured, prisma } from "@/lib/db";
 import { verifyPassword, createSession, applySessionCookie } from "@/lib/auth";
 import { loginSchema } from "@/lib/validations/auth";
-
-function isDbAuthError(e: unknown): boolean {
-  if (
-    e instanceof Prisma.PrismaClientKnownRequestError ||
-    e instanceof Prisma.PrismaClientUnknownRequestError ||
-    e instanceof Prisma.PrismaClientInitializationError
-  ) {
-    return true;
-  }
-  if (e instanceof Error) {
-    const msg = e.message.toLowerCase();
-    return (
-      msg.includes("authenticationfailed") ||
-      msg.includes("scram failure") ||
-      msg.includes("mongodb") ||
-      msg.includes("server selection") ||
-      msg.includes("timed out") ||
-      msg.includes("econnrefused") ||
-      msg.includes("connect")
-    );
-  }
-  return false;
-}
+import {
+  databaseErrorResponse,
+  isDatabaseError,
+  unexpectedErrorResponse,
+} from "@/lib/api-errors";
 
 export async function POST(request: Request) {
   try {
+    assertDatabaseConfigured();
+
     const body = await request.json();
     const parsed = loginSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error:{
-          email: "Email invalide",
-          password: "Mot de passe incorrect",
+        {
+          error: {
+            email: "Email invalide",
+            password: "Mot de passe incorrect",
+          },
+          details: parsed.error.flatten(),
         },
-          details: parsed.error.flatten() },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -48,15 +33,25 @@ export async function POST(request: Request) {
       include: { company: true },
     });
     if (!user) {
-      return NextResponse.json({ error:{
-        email: "Email invalide",
-      } }, { status: 401 });
+      return NextResponse.json(
+        {
+          error: {
+            email: "Email invalide",
+          },
+        },
+        { status: 401 },
+      );
     }
 
-    if (!verifyPassword(user?.passwordHash ?? '', parsed.data.password)) {
-      return NextResponse.json({ error:{
-        password: "Mot de passe incorrect",
-      } }, { status: 401 });
+    if (!verifyPassword(user?.passwordHash ?? "", parsed.data.password)) {
+      return NextResponse.json(
+        {
+          error: {
+            password: "Mot de passe incorrect",
+          },
+        },
+        { status: 401 },
+      );
     }
 
     const session = await createSession(user.id, user.companyId);
@@ -73,13 +68,9 @@ export async function POST(request: Request) {
     applySessionCookie(response, session);
     return response;
   } catch (e) {
-    console.error("Login error:", e);
-    if (isDbAuthError(e)) {
-      return NextResponse.json(
-        { error: "Connexion à la base de données impossible. Vérifiez DATABASE_URL dans .env." },
-        { status: 503 }
-      );
+    if (isDatabaseError(e)) {
+      return databaseErrorResponse("auth/login", e);
     }
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return unexpectedErrorResponse("auth/login", e);
   }
 }

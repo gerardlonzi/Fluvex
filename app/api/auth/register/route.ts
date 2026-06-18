@@ -1,36 +1,19 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { assertDatabaseConfigured, prisma } from "@/lib/db";
 import { hashPassword, createSession, applySessionCookie } from "@/lib/auth";
 import { registerCompanySchema, registerUserSchema, registerSecuritySchema } from "@/lib/validations/auth";
-
-function isDbAuthError(e: unknown): boolean {
-  if (
-    e instanceof Prisma.PrismaClientKnownRequestError ||
-    e instanceof Prisma.PrismaClientUnknownRequestError ||
-    e instanceof Prisma.PrismaClientInitializationError
-  ) {
-    return true;
-  }
-  if (e instanceof Error) {
-    const msg = e.message.toLowerCase();
-    return (
-      msg.includes("authenticationfailed") ||
-      msg.includes("scram failure") ||
-      msg.includes("mongodb") ||
-      msg.includes("server selection") ||
-      msg.includes("timed out") ||
-      msg.includes("econnrefused") ||
-      msg.includes("connect")
-    );
-  }
-  return false;
-}
+import {
+  databaseErrorResponse,
+  isDatabaseError,
+  unexpectedErrorResponse,
+} from "@/lib/api-errors";
 
 export async function POST(request: Request) {
   try {
+    assertDatabaseConfigured();
+
     const body = await request.json();
-    
+
     const companyData = registerCompanySchema.safeParse({
       companyName: body.companyName,
       email: body.email,
@@ -53,19 +36,19 @@ export async function POST(request: Request) {
     if (!companyData.success) {
       return NextResponse.json(
         { error: "Données entreprise invalides", details: companyData.error.flatten() },
-        { status: 400 }
+        { status: 400 },
       );
     }
     if (!userData.success) {
       return NextResponse.json(
         { error: "Données utilisateur invalides", details: userData.error.flatten() },
-        { status: 400 }
+        { status: 400 },
       );
     }
     if (!securityData.success) {
       return NextResponse.json(
         { error: "Mot de passe ou CGU invalides", details: securityData.error.flatten() },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -111,12 +94,11 @@ export async function POST(request: Request) {
 
     const session = await createSession(user.id, company.id);
 
-    // Créer une notification de bienvenue
     await prisma.alert.create({
       data: {
         companyId: company.id,
-        type: 'OTHER',
-        title: 'Bienvenue sur Fluvex !',
+        type: "OTHER",
+        title: "Bienvenue sur Fluvex !",
         description: `Bienvenue ${user.firstName} ${user.lastName} ! Votre compte a été créé avec succès. Commencez à gérer votre flotte dès maintenant.`,
       },
     });
@@ -134,14 +116,9 @@ export async function POST(request: Request) {
     applySessionCookie(response, session);
     return response;
   } catch (e) {
-    console.error("Register error:", e);
-    const isDbError = isDbAuthError(e);
-    if (isDbError) {
-      return NextResponse.json(
-        { error: "Connexion à la base de données impossible. Vérifiez DATABASE_URL dans .env." },
-        { status: 503 }
-      );
+    if (isDatabaseError(e)) {
+      return databaseErrorResponse("auth/register", e);
     }
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return unexpectedErrorResponse("auth/register", e);
   }
 }
