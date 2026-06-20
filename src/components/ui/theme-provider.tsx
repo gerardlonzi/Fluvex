@@ -13,7 +13,7 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('dark');
+  const [theme, setThemeState] = useState<Theme>('light');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (savedTheme === 'light' || savedTheme === 'dark') {
       setThemeState(savedTheme);
     }
-    /* Sinon on garde 'dark' par défaut (déjà défini dans useState) */
+    /* Sinon on garde 'light' par défaut (déjà défini dans useState) */
   }, []);
 
   useEffect(() => {

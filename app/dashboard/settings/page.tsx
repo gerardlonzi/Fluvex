@@ -227,7 +227,7 @@ export default function SettingsPage() {
                 <button 
                   onClick={handleSave}
                   className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-2 ${
-                    isSaved ? 'bg-primary text-background' : 'bg-primary text-background hover:bg-primaryHover shadow-primary/10'
+                    isSaved ? 'bg-primary text-slate-950' : 'bg-primary text-slate-950 hover:bg-primaryHover shadow-primary/10'
                   }`}
                 >
                   {isSaved ? <Check size={18} /> : null}
@@ -378,14 +378,14 @@ export default function SettingsPage() {
                     <button
                       type="button"
                       onClick={() => setLang('fr')}
-                      className={`px-4 py-2 rounded-xl font-medium transition-colors ${lang === 'fr' ? 'bg-primary text-white' : 'bg-border text-text-muted hover:text-text-main'}`}
+                      className={`px-4 py-2 rounded-xl font-medium transition-colors ${lang === 'fr' ? 'bg-primary text-slate-950' : 'bg-border text-text-muted hover:text-text-main'}`}
                     >
                       Français
                     </button>
                     <button
                       type="button"
                       onClick={() => setLang('en')}
-                      className={`px-4 py-2 rounded-xl font-medium transition-colors ${lang === 'en' ? 'bg-primary text-white' : 'bg-border text-text-muted hover:text-text-main'}`}
+                      className={`px-4 py-2 rounded-xl font-medium transition-colors ${lang === 'en' ? 'bg-primary text-slate-950' : 'bg-border text-text-muted hover:text-text-main'}`}
                     >
                       English
                     </button>
@@ -399,7 +399,7 @@ export default function SettingsPage() {
           {activeTab === 'notifications' && (
             <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <h3 className="text-xl font-bold mb-6">Préférences de notification</h3>
-              <div className="bg-[#0F172A] rounded-2xl border border-white/5 divide-y divide-white/5 overflow-hidden">
+              <div className="bg-surface rounded-2xl border border-border divide-y divide-border overflow-hidden">
                 <ToggleItem 
                   title="Mises à jour des livraisons" 
                   desc="Notifications en temps réel sur le statut des colis."
@@ -471,7 +471,7 @@ function TabButton({ active, onClick, icon, label }: any) {
     <button 
       onClick={onClick}
       className={`flex items-center gap-2 py-4 px-1 border-b-2 transition-all text-sm font-bold whitespace-nowrap ${
-        active ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-300'
+        active ? 'border-primary text-primary' : 'border-transparent text-text-muted hover:text-text-main'
       }`}
     >
       {icon}
@@ -499,14 +499,14 @@ function InputField({ label, icon, value, onChange }: any) {
 
 function ToggleItem({ title, desc, checked, onChange, icon }: any) {
   return (
-    <div className="p-6 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
+    <div className="p-6 flex items-center justify-between hover:bg-border/30 transition-colors">
       <div className="flex gap-4">
-        <div className="size-12 rounded-2xl bg-slate-900 border border-white/5 flex items-center justify-center shrink-0">
+        <div className="size-12 rounded-2xl bg-background border border-border flex items-center justify-center shrink-0">
           {icon}
         </div>
         <div>
           <h4 className="font-bold text-text-main">{title}</h4>
-          <p className="text-sm text-slate-500 max-w-sm">{desc}</p>
+          <p className="text-sm text-text-muted max-w-sm">{desc}</p>
         </div>
       </div>
       <button 

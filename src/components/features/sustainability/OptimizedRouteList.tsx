@@ -107,7 +107,7 @@ export function OptimizedRouteList() {
   return (
     <div className="flex flex-col gap-4 h-full">
       <div className="px-1">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Top Routes</h2>
+        <h2 className="text-2xl font-bold text-text-main">Top Routes</h2>
         <p className="text-sm text-text-muted">
           Routes basées sur le hub et les lieux de livraison.
         </p>
@@ -126,10 +126,10 @@ export function OptimizedRouteList() {
             >
               <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-md bg-slate-100 dark:bg-slate-800 text-text-muted">
+                  <div className="p-1.5 rounded-md bg-border text-text-muted">
                     {route.type === 'electric' ? <Zap className="w-4 h-4" /> : <Truck className="w-4 h-4" />}
                   </div>
-                  <span className="font-bold text-slate-900 dark:text-white text-sm">
+                  <span className="font-bold text-text-main text-sm">
                     {route.id}
                   </span>
                 </div>
@@ -142,7 +142,7 @@ export function OptimizedRouteList() {
                 <span className="text-xs text-text-muted truncate max-w-[120px]" title={route.from}>
                   {route.from}
                 </span>
-                <ArrowRight className="w-3 h-3 text-slate-600 shrink-0" />
+                <ArrowRight className="w-3 h-3 text-text-muted shrink-0" />
                 <span className="text-xs text-text-muted truncate max-w-[120px]" title={route.to}>
                   {route.to}
                 </span>
@@ -151,11 +151,11 @@ export function OptimizedRouteList() {
               <div className="grid grid-cols-2 gap-2 mt-2">
                 <div className="bg-background p-2 rounded-lg">
                   <p className="text-[10px] text-text-muted uppercase font-bold">Éco / Score</p>
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">{route.co2}</p>
+                  <p className="text-sm font-bold text-text-main">{route.co2}</p>
                 </div>
                 <div className="bg-background p-2 rounded-lg">
                   <p className="text-[10px] text-text-muted uppercase font-bold">Distance (km)</p>
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">{route.dist}</p>
+                  <p className="text-sm font-bold text-text-main">{route.dist}</p>
                 </div>
               </div>
             </div>

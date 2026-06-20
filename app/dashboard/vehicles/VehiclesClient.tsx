@@ -258,7 +258,7 @@ export default function VehiclesClient({
                 onClick={() => setStatusFilter(status)}
                 className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
                   statusFilter === status
-                    ? 'bg-primary text-background shadow-lg shadow-primary/20'
+                    ? 'bg-primary text-slate-950 shadow-lg shadow-primary/20'
                     : 'bg-border text-text-muted hover:text-text-main border border-border'
                 }`}
               >
@@ -379,7 +379,7 @@ export default function VehiclesClient({
               <button type="button" onClick={() => setEditVehicleId(null)} className="flex-1 py-3 rounded-xl font-semibold border border-border bg-background text-text-main hover:bg-border">
                 Annuler
               </button>
-              <button type="button" onClick={handleSaveEdit} disabled={savingEdit} className="flex-1 py-3 rounded-xl font-bold bg-primary text-background hover:bg-primaryHover disabled:opacity-50 flex items-center justify-center gap-2">
+              <button type="button" onClick={handleSaveEdit} disabled={savingEdit} className="flex-1 py-3 rounded-xl font-bold bg-primary text-slate-950 hover:bg-primaryHover disabled:opacity-50 flex items-center justify-center gap-2">
                 <Save size={18} />
                 {savingEdit ? 'Enregistrement…' : 'Enregistrer'}
               </button>

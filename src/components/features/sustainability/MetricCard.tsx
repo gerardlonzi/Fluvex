@@ -55,11 +55,11 @@ export function MetricCard({ title, value, subtitle, trend, progress, icon: Icon
       </div>
 
       <h3 className="text-text-muted text-sm font-medium mb-1">{title}</h3>
-      <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{value}</p>
+      <p className="text-3xl font-black text-text-main tracking-tight">{value}</p>
       <p className="text-xs text-text-muted mt-2">{subtitle}</p>
 
       {/* Barre de progression */}
-      <div className="mt-4 h-1.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+      <div className="mt-4 h-1.5 w-full rounded-full bg-border overflow-hidden">
         <div 
           className={clsx("h-full rounded-full transition-all duration-1000 ease-out", theme.bar)} 
           style={{ width: `${progress}%` }}

@@ -169,7 +169,7 @@ export default function FleetClient({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-background text-white">
+    <div className="flex-1 flex flex-col h-full bg-background text-text-main">
       {/* HEADER */}
       <header className="flex flex-col md:flex-row md:items-center justify-between md:px-8 py-5 backdrop-blur-md border-b border-border">
         <div>
@@ -194,14 +194,14 @@ export default function FleetClient({
 
           <Link
             href="/dashboard/fleet/new"
-            className="flex items-center gap-2 bg-primary hover:bg-primaryHover text-background px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-primary/20 active:scale-95"
+            className="flex items-center gap-2 bg-primary hover:bg-primaryHover text-slate-950 px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-primary/20 active:scale-95"
           >
             <Plus size={20} />
             
           </Link>
           <Link
             href="/dashboard/vehicles"
-            className="flex items-center gap-2 bg-primary hover:bg-primaryHover text-background px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-primary/20 active:scale-95"
+            className="flex items-center gap-2 bg-primary hover:bg-primaryHover text-slate-950 px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-primary/20 active:scale-95"
           >
             <Truck size={20} />
             
@@ -232,7 +232,7 @@ export default function FleetClient({
                 onClick={() => setStatusFilter(status)}
                 className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
                   statusFilter === status
-                    ? 'bg-primary text-background shadow-lg shadow-primary/20'
+                    ? 'bg-primary text-slate-950 shadow-lg shadow-primary/20'
                     : 'bg-border text-text-muted hover:text-text-main border border-border'
                 }`}
               >
@@ -384,7 +384,7 @@ export default function FleetClient({
             <div className="flex gap-4 justify-center">
               <button
                 onClick={() => setDeleteModalId(null)}
-                className="px-6 py-3 bg-border hover:bg-border/80 text-white rounded-xl font-medium transition-all"
+                className="px-6 py-3 bg-border hover:bg-border/80 text-text-main rounded-xl font-medium transition-all"
               >
                 Annuler
               </button>

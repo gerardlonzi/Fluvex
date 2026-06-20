@@ -157,22 +157,22 @@ export default function NewDriverPage() {
   };
 
   return (
-    <div className="bg-slate-50 dark:bg-background text-slate-800 dark:text-text-main min-h-screen font-sans antialiased transition-colors duration-200">
+    <div className="bg-background text-text-main min-h-screen font-sans antialiased transition-colors duration-200">
       <main className="max-w-5xl mx-auto py-8">
         <header className="mb-8 px-4 md:px-0">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-text-main tracking-tight">
+              <h1 className="text-3xl font-bold text-text-main tracking-tight">
                 Ajouter un nouveau chauffeur
               </h1>
-              <p className="text-slate-500 dark:text-text-muted mt-1">
+              <p className="text-text-muted mt-1">
                 Intégrez un nouveau chauffeur, assignez des véhicules et gérez la conformité.
               </p>
             </div>
             <div className="flex items-center gap-3">
               <Link
                 href={returnTo}
-                className="px-6 py-2.5 rounded-lg border border-slate-300 dark:border-border font-semibold text-slate-600 dark:text-text-muted hover:bg-slate-50 dark:hover:bg-surface transition-colors"
+                className="px-6 py-2.5 rounded-lg border border-border font-semibold text-text-muted hover:bg-surface transition-colors"
               >
                 Annuler
               </Link>
@@ -180,7 +180,7 @@ export default function NewDriverPage() {
                 type="submit"
                 form="new-driver-form"
                 disabled={isSubmitting}
-                className="px-6 py-2.5 rounded-lg bg-primary text-background font-bold hover:bg-primaryHover transition-colors shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-70"
+                className="px-6 py-2.5 rounded-lg bg-primary text-slate-950 font-bold hover:bg-primaryHover transition-colors shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-70"
               >
                 <Save className="w-4 h-4" />
                 {isSubmitting ? 'Enregistrement...' : 'Enregistrer le chauffeur'}
@@ -198,9 +198,9 @@ export default function NewDriverPage() {
         <form id="new-driver-form" className="space-y-6 px-4 md:px-0" onSubmit={handleSubmit(onSubmit)}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              <section className="bg-white dark:bg-surface rounded-xl border border-slate-200 dark:border-border shadow-sm p-6">
+              <section className="bg-surface rounded-xl border border-border shadow-sm p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-text-main flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-text-main flex items-center gap-2">
                     <User className="w-5 h-5 text-primary" />
                     Informations personnelles
                   </h2>
@@ -221,32 +221,32 @@ export default function NewDriverPage() {
                       type="button"
                       onClick={() => avatarInputRef.current?.click()}
                       className={`relative w-24 h-24 group rounded-full border-2 border-dashed transition-colors ${
-                        errors.avatarUrl ? 'border-red-500' : 'border-slate-300 dark:border-border'
+                        errors.avatarUrl ? 'border-red-500' : 'border-border'
                       }`}
                       disabled={avatarUploading}
                     >
-                      <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-slate-50 dark:bg-background">
+                      <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-background">
                         {avatarUrl ? (
                           <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                         ) : (
-                          <Camera className="w-8 h-8 text-slate-400 group-hover:text-primary" />
+                          <Camera className="w-8 h-8 text-text-muted group-hover:text-primary" />
                         )}
                       </div>
-                      <div className="absolute bottom-0 right-0 bg-primary text-background rounded-full p-1.5 border-2 border-white dark:border-surface">
+                      <div className="absolute bottom-0 right-0 bg-primary text-slate-950 rounded-full p-1.5 border-2 border-surface">
                         <Pencil className="w-3 h-3" />
                       </div>
                     </button>
-                    <span className="text-sm font-medium text-slate-500">Photo de profil</span>
+                    <span className="text-sm font-medium text-text-muted">Photo de profil</span>
                   </div>
                   <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="col-span-2 md:col-span-1">
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">
+                      <label className="block text-sm font-semibold text-text-muted mb-1.5">
                         Nom légal complet <span className="text-red-400">*</span>
                       </label>
                       <input
                         {...register('name')}
-                        className={`w-full bg-slate-50 dark:bg-background border rounded-lg px-4 py-2.5 text-slate-900 dark:text-text-main outline-none focus:ring-1 focus:ring-primary ${
-                          errors.name ? 'border-red-500' : 'border-slate-200 dark:border-border'
+                        className={`w-full bg-background border rounded-lg px-4 py-2.5 text-text-main outline-none focus:ring-1 focus:ring-primary ${
+                          errors.name ? 'border-red-500' : 'border-border'
                         }`}
                         type="text"
                         placeholder="ex. Jonathan Doe"
@@ -254,26 +254,26 @@ export default function NewDriverPage() {
                       {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name.message}</p>}
                     </div>
                     <div className="col-span-2 md:col-span-1">
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">
+                      <label className="block text-sm font-semibold text-text-muted mb-1.5">
                         Date de naissance <span className="text-red-400">*</span>
                       </label>
                       <input
                         {...register('birthDate')}
-                        className={`w-full bg-slate-50 dark:bg-background border rounded-lg px-4 py-2.5 text-slate-900 dark:text-text-main outline-none focus:ring-1 focus:ring-primary ${
-                          errors.birthDate ? 'border-red-500' : 'border-slate-200 dark:border-border'
+                        className={`w-full bg-background border rounded-lg px-4 py-2.5 text-text-main outline-none focus:ring-1 focus:ring-primary ${
+                          errors.birthDate ? 'border-red-500' : 'border-border'
                         }`}
                         type="date"
                       />
                       {errors.birthDate && <p className="mt-1 text-xs text-red-500">{errors.birthDate.message}</p>}
                     </div>
                     <div className="col-span-2 md:col-span-1">
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">
+                      <label className="block text-sm font-semibold text-text-muted mb-1.5">
                         Adresse e-mail <span className="text-red-400">*</span>
                       </label>
                       <input
                         {...register('email')}
-                        className={`w-full bg-slate-50 dark:bg-background border rounded-lg px-4 py-2.5 text-slate-900 dark:text-text-main outline-none focus:ring-1 focus:ring-primary ${
-                          errors.email ? 'border-red-500' : 'border-slate-200 dark:border-border'
+                        className={`w-full bg-background border rounded-lg px-4 py-2.5 text-text-main outline-none focus:ring-1 focus:ring-primary ${
+                          errors.email ? 'border-red-500' : 'border-border'
                         }`}
                         type="email"
                         placeholder="john@fluvex.com"
@@ -281,13 +281,13 @@ export default function NewDriverPage() {
                       {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
                     </div>
                     <div className="col-span-2 md:col-span-1">
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">
+                      <label className="block text-sm font-semibold text-text-muted mb-1.5">
                         Numéro de téléphone <span className="text-red-400">*</span>
                       </label>
                       <input
                         {...register('phone')}
-                        className={`w-full bg-slate-50 dark:bg-background border rounded-lg px-4 py-2.5 text-slate-900 dark:text-text-main outline-none focus:ring-1 focus:ring-primary ${
-                          errors.phone ? 'border-red-500' : 'border-slate-200 dark:border-border'
+                        className={`w-full bg-background border rounded-lg px-4 py-2.5 text-text-main outline-none focus:ring-1 focus:ring-primary ${
+                          errors.phone ? 'border-red-500' : 'border-border'
                         }`}
                         type="tel"
                         placeholder="+33 6 12 34 56 78"
@@ -296,17 +296,17 @@ export default function NewDriverPage() {
                     </div>
                   </div>
                 </div>
-                <div className="pt-6 border-t border-slate-100 dark:border-border grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="pt-6 border-t border-border grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">
+                    <label className="block text-sm font-semibold text-text-muted mb-1.5">
                       Numéro de permis <span className="text-red-400">*</span>
                     </label>
                     <div className="relative">
-                      <IdCard className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+                      <IdCard className="absolute left-3 top-3 w-4 h-4 text-text-muted" />
                       <input
                         {...register('licenseNumber')}
-                        className={`w-full pl-9 bg-slate-50 dark:bg-background border rounded-lg px-4 py-2.5 text-slate-900 dark:text-text-main outline-none focus:ring-1 focus:ring-primary font-mono ${
-                          errors.licenseNumber ? 'border-red-500' : 'border-slate-200 dark:border-border'
+                        className={`w-full pl-9 bg-background border rounded-lg px-4 py-2.5 text-text-main outline-none focus:ring-1 focus:ring-primary font-mono ${
+                          errors.licenseNumber ? 'border-red-500' : 'border-border'
                         }`}
                         placeholder="DL-12345678"
                         type="text"
@@ -317,13 +317,13 @@ export default function NewDriverPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">
+                    <label className="block text-sm font-semibold text-text-muted mb-1.5">
                       Expiration du permis <span className="text-red-400">*</span>
                     </label>
                     <input
                       {...register('licenseExpiry')}
-                      className={`w-full bg-slate-50 dark:bg-background border rounded-lg px-4 py-2.5 text-slate-900 dark:text-text-main outline-none focus:ring-1 focus:ring-primary ${
-                        errors.licenseExpiry ? 'border-red-500' : 'border-slate-200 dark:border-border'
+                      className={`w-full bg-background border rounded-lg px-4 py-2.5 text-text-main outline-none focus:ring-1 focus:ring-primary ${
+                        errors.licenseExpiry ? 'border-red-500' : 'border-border'
                       }`}
                       type="date"
                     />
@@ -333,14 +333,14 @@ export default function NewDriverPage() {
                   </div>
                 </div>
               </section>
-              <section className="bg-white dark:bg-surface rounded-xl border border-slate-200 dark:border-border shadow-sm p-6">
-                <h2 className="text-lg font-bold text-slate-900 dark:text-text-main flex items-center gap-2 mb-6">
+              <section className="bg-surface rounded-xl border border-border shadow-sm p-6">
+                <h2 className="text-lg font-bold text-text-main flex items-center gap-2 mb-6">
                   <Briefcase className="w-5 h-5 text-primary" />
                   Préférences de travail
                 </h2>
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-3">
+                    <label className="block text-sm font-semibold text-text-muted mb-3">
                       Régions d&apos;intervention (Optionnel)
                     </label>
                     <div className="flex flex-wrap gap-2">
@@ -348,7 +348,7 @@ export default function NewDriverPage() {
                         (region, i) => (
                           <label key={region} className="cursor-pointer">
                             <input defaultChecked={i % 2 === 0} className="peer sr-only" type="checkbox" />
-                            <span className="px-4 py-2 rounded-full border border-slate-200 dark:border-border bg-slate-50 dark:bg-background text-sm text-slate-600 dark:text-text-muted peer-checked:bg-primary peer-checked:text-background peer-checked:border-primary peer-checked:font-semibold transition-all hover:border-primary/50">
+                            <span className="px-4 py-2 rounded-full border border-border bg-background text-sm text-text-muted peer-checked:bg-primary peer-checked:text-slate-950 peer-checked:border-primary peer-checked:font-semibold transition-all hover:border-primary/50">
                               {region}
                             </span>
                           </label>
@@ -358,20 +358,20 @@ export default function NewDriverPage() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">
+                      <label className="block text-sm font-semibold text-text-muted mb-1.5">
                         Quart de travail principal
                       </label>
-                      <select {...register('shift')} className="w-full bg-slate-50 dark:bg-background border border-slate-200 dark:border-border rounded-lg px-4 py-2.5 text-slate-900 dark:text-text-main outline-none cursor-pointer">
+                      <select {...register('shift')} className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-text-main outline-none cursor-pointer">
                         <option>Matin (06:00 - 14:00)</option>
                         <option>Après-midi (14:00 - 22:00)</option>
                         <option>Nuit (22:00 - 06:00)</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">
+                      <label className="block text-sm font-semibold text-text-muted mb-1.5">
                         Type d&apos;emploi
                       </label>
-                      <select {...register('employmentType')} className="w-full bg-slate-50 dark:bg-background border border-slate-200 dark:border-border rounded-lg px-4 py-2.5 text-slate-900 dark:text-text-main outline-none cursor-pointer">
+                      <select {...register('employmentType')} className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-text-main outline-none cursor-pointer">
                         <option>Temps plein</option>
                         <option>Temps partiel</option>
                         <option>Prestataire</option>
@@ -382,21 +382,21 @@ export default function NewDriverPage() {
               </section>
             </div>
             <div className="space-y-6">
-              <section className="bg-white dark:bg-surface rounded-xl border border-slate-200 dark:border-border shadow-sm p-6">
-                <h2 className="text-lg font-bold text-slate-900 dark:text-text-main flex items-center gap-2 mb-6">
+              <section className="bg-surface rounded-xl border border-border shadow-sm p-6">
+                <h2 className="text-lg font-bold text-text-main flex items-center gap-2 mb-6">
                   <Truck className="w-5 h-5 text-primary" />
                   Assignation de véhicule
                 </h2>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 dark:text-text-muted mb-1.5">
+                    <label className="block text-sm font-semibold text-text-muted mb-1.5">
                       Sélectionner un véhicule{' '}
-                      <span className="text-slate-400 font-normal">(optionnel)</span>
+                      <span className="text-text-muted font-normal">(optionnel)</span>
                     </label>
                     <div className="relative">
                       <select
                         {...register('vehicleId')}
-                        className="w-full bg-slate-50 dark:bg-background border border-slate-200 dark:border-border rounded-lg px-4 py-2.5 text-slate-900 dark:text-text-main outline-none appearance-none cursor-pointer pr-10"
+                        className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-text-main outline-none appearance-none cursor-pointer pr-10"
                       >
                         <option value="">Aucun véhicule</option>
                         {vehicles.map((v) => (
@@ -405,31 +405,31 @@ export default function NewDriverPage() {
                           </option>
                         ))}
                       </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
                     </div>
                     {vehicles.length === 0 && (
-                      <p className="text-xs text-slate-500 mt-1">
+                      <p className="text-xs text-text-muted mt-1">
                         Aucun véhicule enregistré. Enregistrez des véhicules dans la flotte.
                       </p>
                     )}
                   </div>
-                  <div className="p-4 rounded-lg bg-slate-50 dark:bg-background border border-slate-200 dark:border-border/50 flex gap-3">
-                    <div className="w-12 h-12 rounded bg-white dark:bg-surface flex items-center justify-center shrink-0 border border-slate-100 dark:border-border shadow-sm">
+                  <div className="p-4 rounded-lg bg-background border border-border/50 flex gap-3">
+                    <div className="w-12 h-12 rounded bg-surface flex items-center justify-center shrink-0 border border-border shadow-sm">
                       <Car className="w-6 h-6 text-primary" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-text-main">Info Véhicule</h4>
-                      <p className="text-xs text-slate-500">Sélectionnez un véhicule pour voir les détails.</p>
+                      <h4 className="text-sm font-bold text-text-main">Info Véhicule</h4>
+                      <p className="text-xs text-text-muted">Sélectionnez un véhicule pour voir les détails.</p>
                     </div>
                   </div>
                 </div>
               </section>
-              <section className="bg-white dark:bg-surface rounded-xl border border-slate-200 dark:border-border shadow-sm p-6">
-                <h2 className="text-lg font-bold text-slate-900 dark:text-text-main flex items-center gap-2 mb-4">
+              <section className="bg-surface rounded-xl border border-border shadow-sm p-6">
+                <h2 className="text-lg font-bold text-text-main flex items-center gap-2 mb-4">
                   <FolderOpen className="w-5 h-5 text-primary" />
                   Docs de conformité <span className="text-red-400">*</span>
                 </h2>
-                <p className="text-xs text-slate-500 mb-4">PDF ou JPG valides. Max 5 Mo.</p>
+                <p className="text-xs text-text-muted mb-4">PDF ou JPG valides. Max 5 Mo.</p>
                 <input
                   ref={docsInputRef}
                   type="file"
@@ -443,34 +443,34 @@ export default function NewDriverPage() {
                   onClick={() => docsInputRef.current?.click()}
                   disabled={docsUploading}
                   className={`w-full border-2 border-dashed rounded-lg p-6 text-center transition-colors group disabled:opacity-70 ${
-                    errors.docs ? 'border-red-500 bg-red-50/30' : 'border-slate-300 dark:border-border hover:border-primary'
+                    errors.docs ? 'border-red-500 bg-red-50/30' : 'border-border hover:border-primary'
                   }`}
                 >
                   <CloudUpload
                     className={`w-10 h-10 mx-auto mb-2 transition-colors ${
-                      errors.docs ? 'text-red-400' : 'text-slate-300 group-hover:text-primary'
+                      errors.docs ? 'text-red-400' : 'text-text-muted group-hover:text-primary'
                     }`}
                   />
-                  <p className="text-sm font-medium text-slate-700">{docsUploading ? 'Upload...' : 'Cliquez pour télécharger'}</p>
-                  <p className="text-xs text-slate-400 mt-1">Permis, Assurance, Identité</p>
+                  <p className="text-sm font-medium text-text-main">{docsUploading ? 'Upload...' : 'Cliquez pour télécharger'}</p>
+                  <p className="text-xs text-text-muted mt-1">Permis, Assurance, Identité</p>
                 </button>
                 <div className="mt-4 space-y-3">
                   {docs.map((d) => (
                     <div
                       key={d.publicId}
-                      className="flex items-center justify-between p-3 bg-slate-50 dark:bg-background rounded-lg border border-slate-200 dark:border-border"
+                      className="flex items-center justify-between p-3 bg-background rounded-lg border border-border"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <CheckCircle className="w-5 h-5 text-primary shrink-0" />
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{d.originalFilename}</p>
-                          <p className="text-xs text-slate-500">{Math.round(d.bytes / 1024)} Ko</p>
+                          <p className="text-xs text-text-muted">{Math.round(d.bytes / 1024)} Ko</p>
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => removeDoc(d.publicId)}
-                        className="text-slate-400 hover:text-red-500"
+                        className="text-text-muted hover:text-red-500"
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>

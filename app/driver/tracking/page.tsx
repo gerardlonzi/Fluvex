@@ -130,7 +130,7 @@ export default function DriverTrackingPage() {
             type="button"
             onClick={tracking ? stopTracking : startTracking}
             className={`flex-1 flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition-colors ${
-              tracking ? 'bg-danger text-background hover:bg-danger/80' : 'bg-primary text-background hover:bg-primaryHover'
+              tracking ? 'bg-danger text-white hover:bg-danger/80' : 'bg-primary text-slate-950 hover:bg-primaryHover'
             }`}
           >
             {tracking ? <><Square className="w-4 h-4" /> Arrêter</> : <><Play className="w-4 h-4" /> Démarrer</>}

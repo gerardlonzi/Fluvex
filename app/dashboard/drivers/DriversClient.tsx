@@ -103,7 +103,7 @@ export default function DriversClient({
               <div className="size-32 mx-auto rounded-full border-4 border-surface shadow-2xl overflow-hidden ring-1 ring-border">
                 <img src={driver?.avatar || ''} alt={driver?.name || ''} className="w-full h-full object-cover" />
               </div>
-              <span className="absolute bottom-1 right-1/4 bg-primary text-background text-[10px] font-black px-3 py-1 rounded-full border-2 border-surface">
+              <span className="absolute bottom-1 right-1/4 bg-primary text-slate-950 text-[10px] font-black px-3 py-1 rounded-full border-2 border-surface">
                 {driver?.status ?? '—'}
               </span>
             </div>
@@ -137,7 +137,7 @@ export default function DriversClient({
             <button
               type="button"
               onClick={() => (isEditing ? setIsEditing(false) : setIsEditing(true))}
-              className="w-full py-3 bg-primary hover:bg-primaryHover text-background font-bold rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-primary/10"
+              className="w-full py-3 bg-primary hover:bg-primaryHover text-slate-950 font-bold rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-primary/10"
             >
               {isEditing ? <><Save size={18} /> Sauvegarder</> : <><Edit3 size={18} /> Modifier Profil</>}
             </button>

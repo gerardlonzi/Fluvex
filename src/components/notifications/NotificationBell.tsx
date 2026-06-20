@@ -172,7 +172,7 @@ export function NotificationBell() {
                     <button
                       key={alert.id}
                       onClick={() => !alert.readAt && markOneRead(alert.id)}
-                      className={`relative w-full text-left p-4 border-gray-600 border-b transition-all flex gap-4 ${
+                      className={`relative w-full text-left p-4 border-border border-b transition-all flex gap-4 ${
                         !alert.readAt 
                           ? 'bg-surface border-primary/20 shadow-sm' 
                           : 'bg-transparent border-border/50 opacity-60'

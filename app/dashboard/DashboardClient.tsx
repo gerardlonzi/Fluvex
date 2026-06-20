@@ -235,7 +235,7 @@ export default function DashboardClient({
             />
           </div>
 
-          <Link href="/dashboard/deliveries/new" className="flex items-center bg-primary hover:bg-primaryHover text-background px-5 py-2.5 rounded-xl font-semibold transition-all shadow-lg shadow-primary/20">
+          <Link href="/dashboard/deliveries/new" className="flex items-center bg-primary hover:bg-primaryHover text-slate-950 px-5 py-2.5 rounded-xl font-semibold transition-all shadow-lg shadow-primary/20">
             <Plus /> <span className="hidden md:block">Nouvelle Livraison</span>
           </Link>
         </div>

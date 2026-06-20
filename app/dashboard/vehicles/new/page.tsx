@@ -106,7 +106,7 @@ export default function NewVehiclePage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 py-3 rounded-xl bg-primary text-background font-bold flex items-center justify-center gap-2 hover:bg-primaryHover disabled:opacity-70 transition-colors"
+              className="flex-1 py-3 rounded-xl bg-primary text-slate-950 font-bold flex items-center justify-center gap-2 hover:bg-primaryHover disabled:opacity-70 transition-colors"
             >
               <Save size={18} />
               {isSubmitting ? 'Enregistrement…' : 'Enregistrer le véhicule'}

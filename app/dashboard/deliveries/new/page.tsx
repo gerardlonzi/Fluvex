@@ -797,7 +797,7 @@ export default function CreateLivraison() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-primary text-background font-bold py-4 px-6 rounded-xl hover:bg-primaryHover disabled:opacity-70 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/10 mt-6"
+                  className="w-full bg-primary text-slate-950 font-bold py-4 px-6 rounded-xl hover:bg-primaryHover disabled:opacity-70 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/10 mt-6"
                 >
                   {isSubmitting ? 'Création...' : 'Créer la livraison'}{' '}
                   <ArrowRight className="w-5 h-5" />

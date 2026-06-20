@@ -49,7 +49,7 @@ export default function LoginPage() {
 
   return (
     <div>
-      <h2 className="text-3xl font-bold text-white mb-2">Se connecter</h2>
+      <h2 className="text-3xl font-bold text-text-main mb-2">Se connecter</h2>
       <p className="text-text-muted mb-8">Ravis de vous revoir.</p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -62,7 +62,7 @@ export default function LoginPage() {
               type="email"
               {...register('email')}
               placeholder="nom@entreprise.com"
-              className={`w-full bg-slate-900 border rounded-lg p-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all ${errors.email ? 'border-red-500' : 'border-border'}`}
+              className={`w-full bg-surface border rounded-lg p-3 text-text-main focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all ${errors.email ? 'border-red-500' : 'border-border'}`}
             />
             {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>}
           </div>
@@ -74,7 +74,7 @@ export default function LoginPage() {
               type="password"
               {...register('password')}
               placeholder="••••••••"
-              className={`w-full bg-slate-900 border rounded-lg p-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all ${errors.password ? 'border-red-500' : 'border-border'}`}
+              className={`w-full bg-surface border rounded-lg p-3 text-text-main focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all ${errors.password ? 'border-red-500' : 'border-border'}`}
             />
             {errors.password && <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>}
           </div>
@@ -83,7 +83,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="flex-1 bg-primary hover:bg-primaryHover disabled:opacity-70 disabled:cursor-not-allowed w-full mt-3 text-background px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+          className="flex-1 bg-primary hover:bg-primaryHover disabled:opacity-70 disabled:cursor-not-allowed w-full mt-3 text-slate-950 px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
         >
           {isSubmitting ? 'Connexion...' : 'Continuer'}
           <ArrowRight className="w-4 h-4" />

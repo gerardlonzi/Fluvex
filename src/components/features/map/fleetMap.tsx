@@ -239,7 +239,7 @@ export default function FleetMap({ selectedDeliveryAddress = null, onRouteMeta, 
   }, []);
 
   return (
-    <div className={`relative w-full h-full bg-slate-900 group/map ${fullscreen ? 'fixed inset-0 z-[100]' : ''}`}>
+    <div className={`relative w-full h-full bg-surface group/map ${fullscreen ? 'fixed inset-0 z-[100]' : ''}`}>
       <Map
         initialViewState={{ latitude: 48.8566, longitude: 2.3522, zoom: 12 }}
         style={{ width: '100%', height: '100%' }}
@@ -255,10 +255,10 @@ export default function FleetMap({ selectedDeliveryAddress = null, onRouteMeta, 
           <Marker latitude={origin.lat} longitude={origin.lng} anchor="bottom">
             <div className="relative flex flex-col items-center">
               <div className="absolute -inset-1 bg-primary/30 rounded-full animate-ping" />
-              <div className="bg-slate-900 border-2 border-[#13ec5b] text-[#13ec5b] px-2 py-1.5 rounded-lg shadow-xl relative z-10 text-[10px] font-bold whitespace-nowrap">
+              <div className="bg-surface border-2 border-[#13ec5b] text-[#13ec5b] px-2 py-1.5 rounded-lg shadow-xl relative z-10 text-[10px] font-bold whitespace-nowrap">
                 HUB
               </div>
-              <div className="mt-1 px-2 py-0.5 rounded bg-slate-900/95 border border-slate-700 text-[9px] text-slate-300 max-w-[140px] truncate" title={origin.lng === DEFAULT_HUB.lng && origin.lat === DEFAULT_HUB.lat ? "Configurer l'adresse dans Paramètres" : undefined}>
+              <div className="mt-1 px-2 py-0.5 rounded bg-surface/95 border border-border text-[9px] text-text-muted max-w-[140px] truncate" title={origin.lng === DEFAULT_HUB.lng && origin.lat === DEFAULT_HUB.lat ? "Configurer l'adresse dans Paramètres" : undefined}>
                 {origin.lng === DEFAULT_HUB.lng && origin.lat === DEFAULT_HUB.lat ? "Adresse à configurer" : "Siège"}
               </div>
             </div>
@@ -269,7 +269,7 @@ export default function FleetMap({ selectedDeliveryAddress = null, onRouteMeta, 
           <Marker key={loc.driverId} latitude={loc.lat} longitude={loc.lng}>
              <div className="relative">
               <div className="absolute -inset-1 bg-emerald-500/30 rounded-full animate-ping" />
-              <div className="bg-slate-900 border-2 border-emerald-500 text-emerald-400 px-2 py-1 rounded-full shadow-xl text-[10px] font-bold">{loc.driverName}</div>
+              <div className="bg-surface border-2 border-emerald-500 text-emerald-400 px-2 py-1 rounded-full shadow-xl text-[10px] font-bold">{loc.driverName}</div>
             </div>
           </Marker>
         ))}
@@ -289,16 +289,16 @@ export default function FleetMap({ selectedDeliveryAddress = null, onRouteMeta, 
 
       {/* Interface de recherche Destination */}
       <div className="absolute top-6 left-6 z-10 w-80" ref={searchBoxRef}>
-        <div className="flex w-full items-center rounded-xl bg-slate-900/90 backdrop-blur border border-slate-800 p-1 shadow-2xl">
-          <div className="pl-3 text-slate-400"><Search className="w-5 h-5" /></div>
-          <input className="w-full bg-transparent border-none focus:ring-0 text-sm p-2.5 text-white outline-none" placeholder="Rechercher une destination..." value={query} onChange={(e) => setQuery(e.target.value)} />
-          {query && <button onClick={() => { setQuery(''); setResults([]); }} className="p-2 text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>}
+        <div className="flex w-full items-center rounded-xl bg-surface/95 backdrop-blur border border-border p-1 shadow-2xl">
+          <div className="pl-3 text-text-muted"><Search className="w-5 h-5" /></div>
+          <input className="w-full bg-transparent border-none focus:ring-0 text-sm p-2.5 text-text-main outline-none" placeholder="Rechercher une destination..." value={query} onChange={(e) => setQuery(e.target.value)} />
+          {query && <button onClick={() => { setQuery(''); setResults([]); }} className="p-2 text-text-muted hover:text-text-main"><X className="w-4 h-4" /></button>}
         </div>
 
         {results.length > 0 && (
-          <div className="mt-2 rounded-xl overflow-hidden border border-slate-800 bg-slate-900/95 backdrop-blur shadow-2xl">
+          <div className="mt-2 rounded-xl overflow-hidden border border-border bg-surface/95 backdrop-blur shadow-2xl">
             {results.map((r) => (
-              <button key={r.id} className="w-full text-left px-4 py-3 text-xs text-slate-200 hover:bg-slate-800 transition-colors"
+              <button key={r.id} className="w-full text-left px-4 py-3 text-xs text-text-main hover:bg-border transition-colors"
                 onClick={async () => {
                   const [lng, lat] = r.center;
                   const dest = { lng, lat, label: r.place_name };
@@ -317,12 +317,12 @@ export default function FleetMap({ selectedDeliveryAddress = null, onRouteMeta, 
       {/* Message aucun chauffeur connecté */}
       {locationsLoaded && liveLocations.length === 0 && (
         <div className="absolute top-6 right-6 z-10">
-          <div className="rounded-xl bg-slate-900/95 backdrop-blur border border-amber-500/30 px-4 py-3 shadow-xl max-w-[260px]">
+          <div className="rounded-xl bg-surface/95 backdrop-blur border border-amber-500/30 px-4 py-3 shadow-xl max-w-[260px]">
             <p className="text-xs font-bold text-amber-400 uppercase tracking-wide flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
               Aucun chauffeur connecté
             </p>
-            <p className="text-[11px] text-slate-400 mt-1">
+            <p className="text-[11px] text-text-muted mt-1">
               Les positions des chauffeurs s&apos;afficheront ici dès qu&apos;ils seront en ligne.
             </p>
           </div>
@@ -332,10 +332,10 @@ export default function FleetMap({ selectedDeliveryAddress = null, onRouteMeta, 
       {/* Infos Itinéraire */}
       {routeMeta && (
         <div className="absolute top-24 left-6 z-10">
-          <div className="bg-slate-900/90 backdrop-blur rounded-xl border border-slate-800 px-4 py-3 shadow-2xl">
-            <p className="text-[10px] text-slate-400 font-bold uppercase">Itinéraire</p>
-            <p className="text-sm font-bold text-white">{routeMeta.distanceKm.toFixed(1)} km</p>
-            <p className="text-xs text-slate-400">{Math.round(routeMeta.durationMin)} min</p>
+          <div className="bg-surface/95 backdrop-blur rounded-xl border border-border px-4 py-3 shadow-2xl">
+            <p className="text-[10px] text-text-muted font-bold uppercase">Itinéraire</p>
+            <p className="text-sm font-bold text-text-main">{routeMeta.distanceKm.toFixed(1)} km</p>
+            <p className="text-xs text-text-muted">{Math.round(routeMeta.durationMin)} min</p>
           </div>
         </div>
       )}
@@ -345,20 +345,20 @@ export default function FleetMap({ selectedDeliveryAddress = null, onRouteMeta, 
         {onFullscreenChange && (
           <button
             onClick={() => onFullscreenChange(!fullscreen)}
-            className="p-3 bg-slate-900/90 backdrop-blur rounded-lg shadow-xl border border-slate-800 hover:bg-slate-800 text-white transition-colors"
+            className="p-3 bg-surface/95 backdrop-blur rounded-lg shadow-xl border border-border hover:bg-border text-text-main transition-colors"
             aria-label={fullscreen ? 'Réduire' : 'Plein écran'}
           >
             {fullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
           </button>
         )}
-        <div className="flex flex-col bg-slate-900/90 backdrop-blur rounded-lg shadow-xl border border-slate-800 overflow-hidden">
-          <button onClick={() => mapRef.current?.zoomIn()} className="p-3 hover:bg-slate-800 text-white border-b border-slate-800"><Plus className="w-5 h-5" /></button>
-          <button onClick={() => mapRef.current?.zoomOut()} className="p-3 hover:bg-slate-800 text-white"><Minus className="w-5 h-5" /></button>
+        <div className="flex flex-col bg-surface/95 backdrop-blur rounded-lg shadow-xl border border-border overflow-hidden">
+          <button onClick={() => mapRef.current?.zoomIn()} className="p-3 hover:bg-border text-text-main border-b border-border"><Plus className="w-5 h-5" /></button>
+          <button onClick={() => mapRef.current?.zoomOut()} className="p-3 hover:bg-border text-text-main"><Minus className="w-5 h-5" /></button>
         </div>
-        <button onClick={handleGeolocateDestination} className="p-3 bg-slate-900/90 backdrop-blur rounded-lg shadow-xl border border-slate-800 hover:bg-slate-800 text-blue-400 transition-colors">
+        <button onClick={handleGeolocateDestination} className="p-3 bg-surface/95 backdrop-blur rounded-lg shadow-xl border border-border hover:bg-border text-blue-400 transition-colors">
           <Locate className={`w-5 h-5 ${searching ? 'animate-pulse' : ''}`} />
         </button>
-        <button onClick={() => origin && mapRef.current?.flyTo({ center: [origin.lng, origin.lat], zoom: 12 })} className="p-3 bg-slate-900/90 backdrop-blur rounded-lg shadow-xl border border-slate-800 text-[#13ec5b]">
+        <button onClick={() => origin && mapRef.current?.flyTo({ center: [origin.lng, origin.lat], zoom: 12 })} className="p-3 bg-surface/95 backdrop-blur rounded-lg shadow-xl border border-border text-[#13ec5b]">
           <Crosshair className="w-5 h-5" />
         </button>
       </div>

@@ -14,7 +14,7 @@ function LegendItem({ color, label }: { color: string; label: string }) {
   return (
     <div className="flex items-center gap-2">
       <div className={`w-8 h-1 ${color} rounded-full`} />
-      <span className="text-xs font-medium text-slate-900 dark:text-white">{label}</span>
+      <span className="text-xs font-medium text-text-main">{label}</span>
     </div>
   );
 }
@@ -176,7 +176,7 @@ export function GreenMap() {
     return (
       <div className="flex flex-col gap-4 h-full">
         <div className="flex items-center justify-between px-1">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Carte des Corridors Verts</h2>
+          <h2 className="text-2xl font-bold text-text-main">Carte des Corridors Verts</h2>
         </div>
         <div className="flex-1 min-h-[400px] rounded-2xl border border-border bg-surface flex items-center justify-center text-text-muted">
           Configurez NEXT_PUBLIC_MAPBOX_TOKEN pour afficher la carte.
@@ -192,7 +192,7 @@ export function GreenMap() {
   const mapContent = (
     <div className={`relative w-full flex-1 min-h-[400px] rounded-2xl overflow-hidden border border-border shadow-sm group ${fullscreen ? 'fixed inset-0 z-[200] min-h-0 rounded-none border-0' : ''}`}>
         {loading ? (
-          <div className="absolute inset-0 bg-slate-800 flex items-center justify-center text-text-muted">
+          <div className="absolute inset-0 bg-border flex items-center justify-center text-text-muted">
             Chargement de la carte…
           </div>
         ) : (
@@ -223,7 +223,7 @@ export function GreenMap() {
         <div className="absolute top-4 left-4">
           <div className="bg-surface/90 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-lg border border-border flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
-            <span className="text-xs font-bold uppercase tracking-wide text-slate-900 dark:text-white">
+            <span className="text-xs font-bold uppercase tracking-wide text-text-main">
               Optimisation Live
             </span>
           </div>
@@ -254,7 +254,7 @@ export function GreenMap() {
     <div className="flex flex-col gap-4 h-full">
       <div className="flex items-center justify-between px-1">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Carte des Corridors Verts</h2>
+          <h2 className="text-2xl font-bold text-text-main">Carte des Corridors Verts</h2>
           <p className="text-sm text-text-muted">Itinéraires optimisés pour l&apos;efficacité énergétique.</p>
         </div>
         <button

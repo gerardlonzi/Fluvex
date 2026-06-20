@@ -87,7 +87,7 @@ export function RoutePanel({ selectedDelivery = null, onSelectDelivery, routeMet
             <MoreVertical className="w-5 h-5" />
           </button>
         </div>
-        <button type="button" className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primaryHover text-background font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-primary/20 group">
+        <button type="button" className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primaryHover text-slate-950 font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-primary/20 group">
           <RefreshCw className="w-5 h-5 group-hover:animate-spin" />
           Optimiser les trajets
         </button>

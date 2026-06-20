@@ -3,32 +3,35 @@
 @tailwind utilities;
 
 @layer base {
-  /* Par défaut = thème sombre (black) */
+  /* Par défaut = thème clair */
   :root {
+    --background: #f8fafc;
+    --surface: #ffffff;
+    --border: #e2e8f0;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --color-chart-1: #10B981;
+    --color-chart-2: #3B82F6;
+    --color-chart-3: #F59E0B;
+    --color-chart-4: #EC4899;
+    --color-surface-base: #ffffff;
+    --color-surface-raised: #f1f5f9;
+    --color-border-2: #e2e8f0;
+    --color-border-3: #cbd5e1;
+    --color-text-3: #64748b;
+  }
+
+  /* Mode sombre = quand .dark est sur html */
+  html.dark {
     --background: #020617;
     --surface: #0f172a;
     --border: #1e293b;
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
-    --color-chart-1: #10B981;   /* vert - Livraisons */
-  --color-chart-2: #3B82F6;   /* bleu - Terminées */
-  --color-chart-3: #F59E0B;   /* orange - Revenu */
-  --color-chart-4: #EC4899;   /* rose - CO₂ */
-  --color-surface-base: #ffffff;
-  --color-surface-raised: #1F2937;
-  --color-border-2: #374151;
-  --color-border-3: #4B5563;
-  --color-text-3: #9CA3AF;
-    
-  }
-
-  /* Mode clair = quand .light est sur html */
-  html.light {
-    --background: #f8fafc;
-    --surface: #ffffff;
-    --border: #e2e8f0;
-    --text-main: #0f172a;
-    --text-muted: #2b2b2b;
+    --color-surface-raised: #1F2937;
+    --color-border-2: #374151;
+    --color-border-3: #4B5563;
+    --color-text-3: #9CA3AF;
   }
 }
 
