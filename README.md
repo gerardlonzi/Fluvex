@@ -1,211 +1,232 @@
 # Fluvex
 
-**Plateforme de gestion de flotte et de livraisons** pour les entreprises logistiques. Fluvex centralise véhicules, chauffeurs, livraisons, cartographie en temps réel, analytique et suivi de l'impact environnemental.
+**Fleet and delivery management platform** for logistics companies. Fluvex centralizes vehicles, drivers, deliveries, real-time mapping, analytics, and environmental impact tracking.
 
 ---
 
-## Fonctionnalités
+## Features
 
-| Module | Description |
-|--------|-------------|
-| **Tableau de bord** | Vue d'ensemble : livraisons actives, flotte, revenus, indicateurs CO₂ |
-| **Flotte & chauffeurs** | Gestion des conducteurs, véhicules et affectations |
-| **Carte temps réel** | Suivi géolocalisé via Mapbox |
-| **Livraisons** | Création, suivi, expiration automatique des statuts |
-| **Analytique** | Graphiques et exports CSV |
-| **Impact écologique** | Métriques de durabilité et routes optimisées |
-| **Paramètres** | Profil entreprise, notifications, thème clair/sombre, FR/EN |
+| Module                   | Description                                                              |
+| ------------------------ | ------------------------------------------------------------------------ |
+| **Dashboard**            | Overview of active deliveries, fleet status, revenue, and CO₂ indicators |
+| **Fleet & Drivers**      | Manage drivers, vehicles, and assignments                                |
+| **Real-Time Map**        | Geolocation tracking powered by Mapbox                                   |
+| **Deliveries**           | Delivery creation, tracking, and automatic status expiration             |
+| **Analytics**            | Interactive charts and CSV exports                                       |
+| **Environmental Impact** | Sustainability metrics and route optimization                            |
+| **Settings**             | Company profile, notifications, light/dark mode, EN/FR support           |
 
 ---
 
-## Stack technique
+## Tech Stack
 
-- **Framework** — [Next.js 16](https://nextjs.org) (App Router)
-- **UI** — React 19, Tailwind CSS, Lucide Icons
-- **Base de données** — MongoDB Atlas via [Prisma](https://www.prisma.io)
-- **Auth** — Sessions signées (cookie HTTP-only `fluvex_session`)
-- **Validation** — Zod + React Hook Form
-- **Cartes** — Mapbox GL / react-map-gl
-- **Médias** — Cloudinary
-- **Graphiques** — Recharts
+* **Framework** — Next.js 16 (App Router)
+* **UI** — React 19, Tailwind CSS, Lucide Icons
+* **Database** — MongoDB Atlas via Prisma
+* **Authentication** — Signed sessions (HTTP-only `fluvex_session` cookie)
+* **Validation** — Zod + React Hook Form
+* **Maps** — Mapbox GL / react-map-gl
+* **Media Storage** — Cloudinary
+* **Charts** — Recharts
 
 ---
 
 ## Architecture
 
+```text
+Unauthenticated Visitor  →  /  →  redirect /login
+Authenticated User       →  /  →  redirect /dashboard
+
+middleware.ts            Route protection (cookie-based)
+app/dashboard/layout     Server-side requireAuth()
+lib/auth.ts              Sessions and password hashing (scrypt)
+lib/api-auth.ts          requireSession() for API routes
 ```
-Visiteur non connecté  →  /  →  redirect /login
-Utilisateur connecté   →  /  →  redirect /dashboard
 
-middleware.ts          Protection des routes (cookie)
-app/dashboard/layout   requireAuth() côté serveur
-lib/auth.ts            Sessions, hash mot de passe (scrypt)
-lib/api-auth.ts        requireSession() pour les routes API
-```
+Authentication is based on **two security layers**:
 
-L'authentification repose sur **deux niveaux** :
+1. **Middleware** (`middleware.ts`) — redirects `/` to `/login` or `/dashboard` and protects `/dashboard/*`.
+2. **Server Layout** (`app/dashboard/layout.tsx`) — executes `requireAuth()` before rendering any dashboard content.
 
-1. **Middleware** (`middleware.ts`) — redirige `/` vers `/login` ou `/dashboard`, protège `/dashboard/*`.
-2. **Layout serveur** (`app/dashboard/layout.tsx`) — appelle `requireAuth()` avant tout rendu du dashboard.
-
-Les pages dashboard utilisent `requireAuth()` pour obtenir `userId` et `companyId` sans logique client redondante.
+Dashboard pages use `requireAuth()` to access `userId` and `companyId` without duplicating authentication logic on the client side.
 
 ---
 
-## Structure du projet
+## Project Structure
 
-```
+```text
 app/
-├── (auth)/              Login & inscription
-├── api/                 Routes REST (auth, livraisons, flotte, exports…)
-├── dashboard/           Pages protégées (Server + Client Components)
-├── driver/              Suivi chauffeur
-└── page.tsx             Redirect racine
+├── (auth)/              Login & registration
+├── api/                 REST API routes (auth, deliveries, fleet, exports...)
+├── dashboard/           Protected pages (Server + Client Components)
+├── driver/              Driver tracking
+└── page.tsx             Root redirect
 
 lib/
-├── auth.ts              Sessions & mots de passe
-├── db.ts                Client Prisma singleton
-├── api-auth.ts          Garde API
-└── validations/         Schémas Zod
+├── auth.ts              Sessions & password management
+├── db.ts                Prisma singleton client
+├── api-auth.ts          API guards
+└── validations/         Zod schemas
 
 prisma/
-└── schema.prisma        Modèles MongoDB
+└── schema.prisma        MongoDB models
 
 src/
-├── components/          UI, layout, cartes, notifications
-└── contexts/            Thème, langue, sidebar
+├── components/          UI, layouts, maps, notifications
+└── contexts/            Theme, language, sidebar
 
-middleware.ts            Protection des routes
+middleware.ts            Route protection
 ```
 
 ---
 
-## Prérequis
+## Prerequisites
 
-- **Node.js** 20+
-- **npm** (ou pnpm / yarn)
-- Compte **[MongoDB Atlas](https://www.mongodb.com/atlas)** (cluster gratuit disponible)
-- Token **[Mapbox](https://account.mapbox.com/)** (cartes)
-- Compte **[Cloudinary](https://cloudinary.com/)** (uploads — optionnel au démarrage)
+* Node.js 20+
+* npm (or pnpm / yarn)
+* MongoDB Atlas account (free cluster available)
+* Mapbox token
+* Cloudinary account (optional for initial setup)
 
 ---
 
 ## Installation
 
 ```bash
-# 1. Cloner le dépôt
-git clone <url-du-repo>
+# 1. Clone the repository
+git clone <repository-url>
 cd Fluvex
 
-# 2. Installer les dépendances
+# 2. Install dependencies
 npm install
 
-# 3. Configurer les variables d'environnement
+# 3. Configure environment variables
 cp .env.example .env
-# Éditez .env avec vos identifiants
+# Edit .env with your credentials
 
-# 4. Générer le client Prisma et pousser le schéma
+# 4. Generate Prisma client and push schema
 npx prisma generate
 npx prisma db push
 
-# 5. Lancer le serveur de développement
+# 5. Start the development server
 npm run dev
 ```
 
-Ouvrez [http://localhost:3000](http://localhost:3000) — vous serez redirigé vers `/login`.
+Open http://localhost:3000 — you will automatically be redirected to `/login`.
 
 ---
 
-## Variables d'environnement
+## Environment Variables
 
-| Variable | Obligatoire | Description |
-|----------|:-----------:|-------------|
-| `DATABASE_URL` | ✅ | URI MongoDB Atlas (`mongodb+srv://…`) |
-| `SESSION_SECRET` | ✅ | Secret HMAC pour les sessions (longue chaîne aléatoire en prod) |
-| `NEXT_PUBLIC_MAPBOX_TOKEN` | ✅ | Token public Mapbox |
-| `CLOUDINARY_CLOUD_NAME` | ⚪ | Cloudinary — nom du cloud |
-| `CLOUDINARY_API_KEY` | ⚪ | Cloudinary — clé API |
-| `CLOUDINARY_API_SECRET` | ⚪ | Cloudinary — secret API |
+| Variable                   | Required | Description                                           |
+| -------------------------- | :------: | ----------------------------------------------------- |
+| `DATABASE_URL`             |     ✅    | MongoDB Atlas connection string (`mongodb+srv://...`) |
+| `SESSION_SECRET`           |     ✅    | HMAC secret used for session signing                  |
+| `NEXT_PUBLIC_MAPBOX_TOKEN` |     ✅    | Public Mapbox token                                   |
+| `CLOUDINARY_CLOUD_NAME`    |     ⚪    | Cloudinary cloud name                                 |
+| `CLOUDINARY_API_KEY`       |     ⚪    | Cloudinary API key                                    |
+| `CLOUDINARY_API_SECRET`    |     ⚪    | Cloudinary API secret                                 |
 
-### MongoDB Atlas — erreurs fréquentes
+### Common MongoDB Atlas Issues
 
-Si login/register renvoie *« Connexion à la base de données impossible »* ou `SCRAM failure: bad auth` :
+If login or registration returns *"Database connection failed"* or `SCRAM failure: bad auth`:
 
-1. Vérifiez **utilisateur / mot de passe** dans Atlas → Database Access.
-2. Autorisez votre IP dans **Network Access** (ou `0.0.0.0/0` en dev).
-3. **Encodez** les caractères spéciaux du mot de passe dans l'URL (`@` → `%40`, `#` → `%23`, etc.).
-4. Une seule ligne `DATABASE_URL=` active dans `.env` (pas de doublons commentés).
+1. Verify your Atlas username and password under **Database Access**.
+2. Allow your IP address in **Network Access** (or use `0.0.0.0/0` during development).
+3. URL-encode special characters in your password (`@` → `%40`, `#` → `%23`, etc.).
+4. Ensure only one active `DATABASE_URL=` exists in your `.env` file.
 
-Exemple :
+Example:
 
 ```env
-DATABASE_URL="mongodb+srv://monuser:MonM%40tDePasse@cluster0.xxxxx.mongodb.net/fluvex?retryWrites=true&w=majority"
+DATABASE_URL="mongodb+srv://myuser:MyP%40ssword@cluster0.xxxxx.mongodb.net/fluvex?retryWrites=true&w=majority"
 ```
 
 ---
 
-## Scripts npm
+## NPM Scripts
 
-| Commande | Action |
-|----------|--------|
-| `npm run dev` | Serveur de développement (port 3000) |
-| `npm run build` | Build de production |
-| `npm run start` | Serveur de production |
-| `npm run lint` | Analyse ESLint |
-| `npx prisma studio` | Interface visuelle de la base |
-| `npx prisma db push` | Synchroniser le schéma Prisma → MongoDB |
-
----
-
-## Routes principales
-
-| Route | Accès | Rôle |
-|-------|-------|------|
-| `/` | Public | Redirect → `/login` ou `/dashboard` |
-| `/login` | Public | Connexion |
-| `/register` | Public | Inscription entreprise |
-| `/dashboard` | Protégé | Tableau de bord |
-| `/dashboard/fleet` | Protégé | Flotte & chauffeurs |
-| `/dashboard/map` | Protégé | Carte temps réel |
-| `/dashboard/deliveries` | Protégé | Livraisons |
-| `/dashboard/analytics` | Protégé | Analytique |
-| `/dashboard/drivers` | Protégé | Performance chauffeurs |
-| `/dashboard/sustainability` | Protégé | Impact écologique |
-| `/dashboard/settings` | Protégé | Paramètres |
+| Command              | Action                        |
+| -------------------- | ----------------------------- |
+| `npm run dev`        | Start development server      |
+| `npm run build`      | Production build              |
+| `npm run start`      | Start production server       |
+| `npm run lint`       | Run ESLint                    |
+| `npx prisma studio`  | Open database GUI             |
+| `npx prisma db push` | Sync Prisma schema to MongoDB |
 
 ---
 
-## API (aperçu)
+## Main Routes
 
-| Endpoint | Méthode | Description |
-|----------|---------|-------------|
-| `/api/auth/login` | POST | Connexion |
-| `/api/auth/register` | POST | Inscription |
-| `/api/auth/logout` | POST | Déconnexion |
-| `/api/auth/me` | GET | Utilisateur courant |
-| `/api/deliveries` | GET, POST | Livraisons |
-| `/api/drivers` | GET, POST | Chauffeurs |
-| `/api/vehicles` | GET, POST | Véhicules |
-| `/api/telemetry/locations` | GET | Positions GPS |
-| `/api/export/*` | GET | Exports CSV |
-| `/api/upload` | POST | Upload Cloudinary |
-
-Toutes les routes API métier exigent une session valide (`requireSession` dans `lib/api-auth.ts`).
-
----
-
-## Déploiement
-
-1. Build : `npm run build`
-2. Définir toutes les variables d'environnement sur la plateforme (Vercel, Railway, etc.).
-3. `SESSION_SECRET` : valeur unique et sécurisée en production.
-4. MongoDB Atlas : autoriser les IP du serveur de production.
-5. Démarrer : `npm run start`
+| Route                       | Access    | Purpose                               |
+| --------------------------- | --------- | ------------------------------------- |
+| `/`                         | Public    | Redirects to `/login` or `/dashboard` |
+| `/login`                    | Public    | User login                            |
+| `/register`                 | Public    | Company registration                  |
+| `/dashboard`                | Protected | Main dashboard                        |
+| `/dashboard/fleet`          | Protected | Fleet & drivers management            |
+| `/dashboard/map`            | Protected | Real-time map                         |
+| `/dashboard/deliveries`     | Protected | Deliveries management                 |
+| `/dashboard/analytics`      | Protected | Analytics                             |
+| `/dashboard/drivers`        | Protected | Driver performance                    |
+| `/dashboard/sustainability` | Protected | Environmental impact                  |
+| `/dashboard/settings`       | Protected | Settings                              |
 
 ---
 
-## Licence
+## API Overview
 
-Projet privé — tous droits réservés.
-en cours de creation de l'app mobile de fluvex
-Gerard lonzi
+| Endpoint                   | Method    | Description                |
+| -------------------------- | --------- | -------------------------- |
+| `/api/auth/login`          | POST      | User login                 |
+| `/api/auth/register`       | POST      | Company registration       |
+| `/api/auth/logout`         | POST      | User logout                |
+| `/api/auth/me`             | GET       | Current authenticated user |
+| `/api/deliveries`          | GET, POST | Deliveries                 |
+| `/api/drivers`             | GET, POST | Drivers                    |
+| `/api/vehicles`            | GET, POST | Vehicles                   |
+| `/api/telemetry/locations` | GET       | GPS locations              |
+| `/api/export/*`            | GET       | CSV exports                |
+| `/api/upload`              | POST      | Cloudinary uploads         |
+
+All business API routes require a valid authenticated session through `requireSession()` in `lib/api-auth.ts`.
+
+---
+
+## Deployment
+
+1. Build the project:
+
+```bash
+npm run build
+```
+
+2. Configure all environment variables on your hosting platform (Vercel, Railway, etc.).
+3. Set a secure and unique `SESSION_SECRET` in production.
+4. Allow production server IPs in MongoDB Atlas.
+5. Start the application:
+
+```bash
+npm run start
+```
+
+---
+
+## Mobile Application
+
+📱 A dedicated Fluvex mobile application is currently under development and will provide real-time delivery tracking, driver management, and logistics monitoring directly from mobile devices.
+
+---
+
+## License
+
+Private project — All rights reserved.
+
+---
+
+## Author
+
+**Gerard Lonzi**
+
+Fleet & Logistics Technology Solutions.
